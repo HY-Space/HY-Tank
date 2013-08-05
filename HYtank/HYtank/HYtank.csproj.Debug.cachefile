@@ -8,11 +8,12 @@ Content\p2.xnb
 Content\p3.xnb
 Content\p4.xnb
 Content\p5.xnb
-Content\ScoreTitle.xnb
-Content\ScoreBody.xnb
-Content\coins.xnb
-Content\lifepack.xnb
 Content\brick25.xnb
 Content\brick50.xnb
 Content\brick75.xnb
+Content\coins.xnb
+Content\lifepack.xnb
+Content\bullet.xnb
+Content\ScoreTitle.xnb
+Content\ScoreBody.xnb
 Content\cellbody.xnb

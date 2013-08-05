@@ -5,6 +5,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
+using Microsoft.Xna.Framework;
 
 namespace HYtank
 {
@@ -23,7 +24,7 @@ namespace HYtank
         //IPAddress ips = new IPAddress(new byte[] { 10,224,58,225});
         Socket s1 = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         TcpListener serverSocket;
-
+        
         PlayerInfo p0, p1, p2, p3, p4;
         int gridSize, columnsGrid;
 
@@ -114,16 +115,17 @@ namespace HYtank
 
                 String[] info;
 
-                if (responseData.Length > 0 && responseData.ElementAt(0) == 'I')
+                if (responseData.Length > 0 && responseData.Split(':')[0] == "I")
                 {
                     info = responseData.Split(':', '#');
+                    Game1.ourPlayer = Game1.players[int.Parse(info[1].Substring(1))];//sets our player
                     initializeBricks(info[2]);
                     initializeStones(info[3]);
                     initializeWater(info[4]);
                     initialized = true;
                     //initialize the map
                 }
-                else if (responseData.Length > 0 && responseData.ElementAt(0) == 'S')
+                else if (responseData.Length > 0 && responseData.Split(':')[0] == "S")
                 {
                     info = responseData.Split(':', ';');
                     positioned = true;
@@ -143,6 +145,7 @@ namespace HYtank
                     gameAlreadyStarted = true;
                     //if join successfully play, else exit and return
                 }
+                
 
                 if (initialized && positioned)
                     break;
@@ -164,105 +167,120 @@ namespace HYtank
                 {
                     Console.WriteLine(ex.ToString());
                 }
-                if (responseData.ElementAt(0) == 'G')
+                if (responseData.Split(':')[0] == "G")
                 {
-                    info = responseData.Split(':','#');
+                    info = responseData.Split(':');
                     String[] playerInfo;
+                    String[] brickInfo;
+                    PlayerInfo p;
+                    int tmp;
                     for (int i = 1; i < info.Length - 1; i++)
                     {
                         playerInfo = info[i].Split(';', ',');
+                        p = null;
+                        tmp = 0;
                         switch (playerInfo[0])
                         {
+
                             case "P0":
                                 {
-                                    p0.participant = true;
-                                    p0.position.X = Game1.gridOriginx + (Int32.Parse(playerInfo[1]) + .5f) * gridSize / columnsGrid;
-                                    p0.position.Y = Game1.gridOriginy + (Int32.Parse(playerInfo[2]) + .5f) * gridSize / columnsGrid;
-                                    p0.direction = Int32.Parse(playerInfo[3]);
-                                    p0.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
-                                    p0.health = Int32.Parse(playerInfo[5]);
-                                    p0.coins = Int32.Parse(playerInfo[6]);
-                                    p0.points = Int32.Parse(playerInfo[7]);
-                                    if (Game1.noPlayers < 1)
-                                        Game1.noPlayers = 1;
+                                    p = p0;
+                                    tmp = 1;
                                     break;
                                 }
                             case "P1":
                                 {
-                                    p1.participant = true;
-                                    p1.position.X = Game1.gridOriginx + (Int32.Parse(playerInfo[1]) + .5f) * gridSize / columnsGrid;
-                                    p1.position.Y = Game1.gridOriginy + (Int32.Parse(playerInfo[2]) + .5f) * gridSize / columnsGrid;
-                                    p1.direction = Int32.Parse(playerInfo[3]);
-                                    p1.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
-                                    p1.health = Int32.Parse(playerInfo[5]);
-                                    p1.coins = Int32.Parse(playerInfo[6]);
-                                    p1.points = Int32.Parse(playerInfo[7]);
-                                    if (Game1.noPlayers < 2)
-                                        Game1.noPlayers = 2;
+                                    p = p1;
+                                    tmp = 2;
                                     break;
                                 }
                             case "P2":
                                 {
-                                    p2.participant = true;
-                                    p2.position.X = Game1.gridOriginx + (Int32.Parse(playerInfo[1]) + .5f) * gridSize / columnsGrid;
-                                    p2.position.Y = Game1.gridOriginy + (Int32.Parse(playerInfo[2]) + .5f) * gridSize / columnsGrid;
-                                    p2.direction = Int32.Parse(playerInfo[3]);
-                                    p2.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
-                                    p2.health = Int32.Parse(playerInfo[5]);
-                                    p2.coins = Int32.Parse(playerInfo[6]);
-                                    p2.points = Int32.Parse(playerInfo[7]);
-                                    if (Game1.noPlayers < 3)
-                                        Game1.noPlayers = 3;
+                                    p = p2;
+                                    tmp = 3;
                                     break;
                                 }
                             case "P3":
                                 {
-                                    p3.participant = true;
-                                    p3.position.X = Game1.gridOriginx + (Int32.Parse(playerInfo[1]) + .5f) * gridSize / columnsGrid;
-                                    p3.position.Y = Game1.gridOriginy + (Int32.Parse(playerInfo[2]) + .5f) * gridSize / columnsGrid;
-                                    p3.direction = Int32.Parse(playerInfo[3]);
-                                    p3.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
-                                    p3.health = Int32.Parse(playerInfo[5]);
-                                    p3.coins = Int32.Parse(playerInfo[6]);
-                                    p3.points = Int32.Parse(playerInfo[7]);
-                                    if (Game1.noPlayers < 4)
-                                        Game1.noPlayers = 4;
+                                    p = p3;
+                                    tmp = 4;
                                     break;
                                 }
                             case "P4":
                                 {
-                                    p4.participant = true;
-                                    p4.position.X = Game1.gridOriginx + (Int32.Parse(playerInfo[1]) + .5f) * gridSize / columnsGrid;
-                                    p4.position.Y = Game1.gridOriginy + (Int32.Parse(playerInfo[2]) + .5f) * gridSize / columnsGrid;
-                                    p4.direction = Int32.Parse(playerInfo[3]);
-                                    p4.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
-                                    p4.health = Int32.Parse(playerInfo[5]);
-                                    p4.coins = Int32.Parse(playerInfo[6]);
-                                    p4.points = Int32.Parse(playerInfo[7]);
-                                    if (Game1.noPlayers < 5)
-                                        Game1.noPlayers = 5;
+                                    p = p4;
+                                    tmp = 5;
                                     break;
                                 }
-                            default :
+                            default:
                                 {
-                                    for (int j = 0; j+2 < playerInfo.Length;j+=3 )
-                                    {
-                                        if (playerInfo[j + 2] =="1")
-                                            grid[Int32.Parse(playerInfo[j + 1]), Int32.Parse(playerInfo[j])] = '1';//rows of the array corresponds to the y axis. so had to change the order
-                                        else if (playerInfo[j + 2] == "2")
-                                            grid[Int32.Parse(playerInfo[j + 1]), Int32.Parse(playerInfo[j])] = '2';
-                                        else if (playerInfo[j + 2] == "3")
-                                            grid[Int32.Parse(playerInfo[j + 1]), Int32.Parse(playerInfo[j])] = '3';
-                                        else if (playerInfo[j + 2] == "4")
-                                            grid[Int32.Parse(playerInfo[j + 1]), Int32.Parse(playerInfo[j])] = '\0';
-                                     }
                                     break;
-                                }
+                                }                               
+
+                        }
+                        if (p != null)
+                        {
+                            p.participant = true;
+                            if (p.coordinates.X != -1)
+                            {
+                                Game1.tankGrid[p.coordinates.Y, p.coordinates.X] = -1;
+                            }
+                            p.coordinates.X=Int32.Parse(playerInfo[1]);
+                            p.coordinates.Y=Int32.Parse(playerInfo[2]);
+                            Game1.tankGrid[p.coordinates.Y, p.coordinates.X] = tmp-1;
+                            p.position.X = Game1.gridOriginx + (p.coordinates.X + .5f) * gridSize / columnsGrid;
+                            p.position.Y = Game1.gridOriginy + (p.coordinates.Y + .5f) * gridSize / columnsGrid;
+                            p.direction = Int32.Parse(playerInfo[3]);
+                            p.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
+                            if (p.shot)
+                            {
+                                new Bullet(new Point(p.coordinates.X, p.coordinates.Y), p.direction);//bullet will be added automatically to the list of bullets
+                            }
+                            p.health = Int32.Parse(playerInfo[5]);
+                            p.coins = Int32.Parse(playerInfo[6]);
+                            p.points = Int32.Parse(playerInfo[7]);
+                            if (Game1.noPlayers < tmp)
+                            {
+                                Game1.noPlayers = tmp;
+                            }
                         }
                     }
 
-                }
+                    brickInfo = info[info.Length - 1].Split(',', ';', '#');
+                                
+                    for (int j = 0; j+2 < brickInfo.Length;j+=3 )
+                    {
+                        if (brickInfo[j + 2] =="1")
+                            grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '1';//rows of the array corresponds to the y axis. so had to change the order
+                        else if (brickInfo[j + 2] == "2")
+                            grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '2';
+                        else if (brickInfo[j + 2] == "3")
+                            grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '3';
+                        else if (brickInfo[j + 2] == "4")
+                            grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '\0';
+                    }
 
+                    Game1.game.setNextMove();
+                }
+                else if (responseData.Split(':')[0] == "C")
+                {
+                    info = responseData.Split(':', '#',',');
+                    grid[Int32.Parse(info[2]), Int32.Parse(info[1])] = 'c';
+                    double leaveat = Double.Parse(info[3]) + Game1.time;
+                    Game1.coinsList.Add(new CoinsInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, Int32.Parse(info[4]), leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
+                    Game1.game.setNextMove();
+                }
+                else if (responseData.Split(':')[0] == "L")
+                {
+                    info = responseData.Split(':', '#',',');
+                    grid[Int32.Parse(info[2]), Int32.Parse(info[1])] = 'l';
+                    double leaveat = Double.Parse(info[3]) + Game1.time;
+                    Game1.lifeList.Add(new LifepackInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, leaveat,Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
+                }
+                else if (responseData == "TOO_QUICK#")
+                {
+                    //command reached before 1s after the previous
+                }
             }
         }
         public void command(String cmd)

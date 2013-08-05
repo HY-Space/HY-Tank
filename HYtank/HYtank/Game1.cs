@@ -8,6 +8,8 @@ using Microsoft.Xna.Framework.GamerServices;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using System.Timers;
+using System.Diagnostics;
 
 namespace HYtank
 {
@@ -17,48 +19,80 @@ namespace HYtank
 
     public class Game1 : Microsoft.Xna.Framework.Game
     {
-        static char[,] arena = new char[20, 20];
+        public static char[,] arena;
+        public static int[,] tankGrid;//this contains the player no (0 to 4) at the occupied cell else -1
+        public static Game1 game;
+        public static PlayerInfo ourPlayer;
+        public static PlayerInfo[] players = new PlayerInfo[5];
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         GraphicsDevice device;
         Texture2D backgroundTexture;
-        Texture2D waterTexture, stoneTexture, brickTexture, brick1Texture, brick2Texture,brick3Texture, tankTexture, p1Texture, p2Texture, p3Texture, p4Texture, p5Texture;
+        Texture2D waterTexture, stoneTexture, brickTexture, brick1Texture, brick2Texture,brick3Texture, tankTexture,bulletTexture, p1Texture, p2Texture, p3Texture, p4Texture, p5Texture,coinsTexture,lifepackTexture;
         int screenWidth;
         int screenHeight;
         int rowsGrid = 20;
-        int columnsGrid = 20;
-        int gridSize = 660;//600
+        public static int columnsGrid = 20;
+        public static int gridSize = 660;//600
         public static int gridOriginx = 6;
         public static int gridOriginy = 6;
         int cellWidth, cellHeight;
         double lastCmdAt = 0;
         public static int noPlayers = 0;
-        public static GameTime time=new GameTime();
-        public static SortedList<CoinsInfo,Int32> coinsList=new SortedList<CoinsInfo,Int32>();
-        public static SortedList<LifepackInfo,Int32> lifeList=new SortedList<LifepackInfo,Int32>();
+        public static double time;
+        public static List<CoinsInfo> coinsList = new List<CoinsInfo>();
+        public static List<LifepackInfo> lifeList = new List<LifepackInfo>();
+        public static LinkedList<Bullet> bullets = new LinkedList<Bullet>();
 
         SpriteFont title,body,celltext;
 
         GameSocket gs = new GameSocket();
+        AI ai = new AI(columnsGrid,columnsGrid);
 
+        
         PlayerInfo p0 = new PlayerInfo(-1, -1), p1 = new PlayerInfo(-1, -1), p2 = new PlayerInfo(-1, -1), p3 = new PlayerInfo(-1, -1), p4 = new PlayerInfo(-1, -1);
-        Vector2 tankCentre;
-        float tankScale;
-        Vector2 playerCentre;
-        float playerScale;
-
+        
+        Vector2 tankCentre,bulletCentre,playerCentre, coinsCentre, lifepackCentre;
+        float tankScale, bulletScale, playerScale, coinsScale, lifepackScale;
+       
         float angle;
+
+        //Timer timer = new Timer(1003);//original
+        Timer timer = new Timer(1400);//testing
+        String nextCommand = "";
+
+        Cell[,] distances=new Cell[columnsGrid, columnsGrid];// has the format [y,x];
+        HashSet<char> barriers= new HashSet<char>{'w','b','s','1','2','3'};
+        GameTime gt;
 
         public Game1()
         {
+            game = this;
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+            arena = new char[columnsGrid, columnsGrid];
+            tankGrid = new int[columnsGrid, columnsGrid];
             cellWidth = gridSize / columnsGrid;
             cellHeight = gridSize / rowsGrid;
             //arena[0, 1] = 's'; arena[9, 0] = 's'; arena[9, 1] = 's'; arena[9, 2] = 's'; arena[8, 1] = 's'; arena[8, 0] = 's'; arena[5, 0] = 'w'; arena[5, 1] = 'w'; arena[4, 0] = 'w'; arena[4, 1] = 'w'; arena[6, 9] = 'b'; arena[6, 8] = 'b'; arena[5, 9] = 'b'; arena[5, 8] = 'b';
 
+            players[0] = p0; players[1] = p1; players[2] = p2; players[3] = p3; players[4] = p4;
 
+            for (int i = 0; i < tankGrid.GetLength(0); i++)//initializing tankgrid for all -1s
+            {
+                for (int j = 0; j < tankGrid.GetLength(0); j++)
+                {
+                    tankGrid[i, j] = -1;
+                }
+            }
 
+            for (int i = 0; i < columnsGrid; i++)
+            {
+                for (int j = 0; j < columnsGrid; j++)
+                {
+                    distances[i, j]=new Cell();
+                }
+            }
 
             gs.setGrid(arena, p0, p1, p2, p3, p4, gridSize, columnsGrid);
             gs.connectToServer();
@@ -67,10 +101,18 @@ namespace HYtank
 
             tankCentre = new Vector2(49, 49);//origin needs to be defined with respect to the original image
             tankScale = cellWidth * 1f / 100;
-
+            bulletCentre = new Vector2(500, 500);//origin needs to be defined with respect to the original image
+            bulletScale = cellWidth * 1f / 1000;
             playerCentre = new Vector2(50, 50);//origin needs to be defined with respect to the original image
+            coinsCentre = new Vector2(50, 50);
+            lifepackCentre = new Vector2(50, 50);
+            coinsScale = lifepackScale = cellWidth * 1f / 100; 
+
+            timer.Elapsed+=new ElapsedEventHandler(timer_Elapsed);
+            timer.Start();
             
         }
+
 
         /// <summary>
         /// Allows the game to perform any initialization it needs to before starting to run.
@@ -105,6 +147,9 @@ namespace HYtank
             brick2Texture = Content.Load<Texture2D>("brick50");
             brick3Texture = Content.Load<Texture2D>("brick75");
             tankTexture = Content.Load<Texture2D>("tank");
+            bulletTexture = Content.Load<Texture2D>("bullet");
+            coinsTexture = Content.Load<Texture2D>("coins");
+            lifepackTexture = Content.Load<Texture2D>("lifepack");
             p1Texture = Content.Load<Texture2D>("p1");
             p2Texture = Content.Load<Texture2D>("p2");
             p3Texture = Content.Load<Texture2D>("p3");
@@ -143,53 +188,127 @@ namespace HYtank
 
             gs.update();
 
-
+            ai.nextMove(arena);
             ///////////////////////////////Test
             KeyboardState keyState = Keyboard.GetState();
             if (keyState.IsKeyDown(Keys.Up))
             {
-                if (gameTime.TotalGameTime.TotalSeconds - lastCmdAt > 1)
-                {
-                    lastCmdAt = gameTime.TotalGameTime.TotalSeconds;
-                    gs.command("UP#");
-                }
+                nextCommand = "UP#";
             }
             else if (keyState.IsKeyDown(Keys.Down))
             {
-                if (gameTime.TotalGameTime.TotalSeconds - lastCmdAt > 1)
-                {
-                    lastCmdAt = gameTime.TotalGameTime.TotalSeconds;
-                    gs.command("DOWN#");
-                }
+                nextCommand = "DOWN#";
             }
             else if (keyState.IsKeyDown(Keys.Left))
             {
-                if (gameTime.TotalGameTime.TotalSeconds - lastCmdAt > 1)
-                {
-                    lastCmdAt = gameTime.TotalGameTime.TotalSeconds;
-                    gs.command("LEFT#");
-                }
+                nextCommand = "LEFT#";
             }
             else if (keyState.IsKeyDown(Keys.Right))
             {
-                if (gameTime.TotalGameTime.TotalSeconds - lastCmdAt > 1)
-                {
-                    lastCmdAt = gameTime.TotalGameTime.TotalSeconds;
-                    gs.command("RIGHT#");
-                }
+                nextCommand = "RIGHT#";
             }
             else if (keyState.IsKeyDown(Keys.Space))
             {
-                if (gameTime.TotalGameTime.TotalSeconds - lastCmdAt > 1)
+                nextCommand = "SHOOT#";
+            }
+            
+            base.Update(gameTime);
+            time = gameTime.TotalGameTime.TotalMilliseconds;
+        }
+
+
+
+        private void timer_Elapsed(Object sender, ElapsedEventArgs arg)
+        {
+            if (!("".Equals(nextCommand)))
+            {
+                timer.Stop();
+                gs.command(nextCommand);
+                timer.Start();
+                nextCommand = "";
+            }
+            //Stopwatch st = new Stopwatch();//test
+            //st.Start();
+            setNextMove();
+            //st.Stop();
+               
+        }
+
+        public void setNextMove()
+        {
+            findDistances(ourPlayer.coordinates.X, ourPlayer.coordinates.Y, ourPlayer.direction);
+            CoinsInfo nextTarget = null;
+            LifepackInfo nextLife = null;
+            foreach (CoinsInfo coin in coinsList)
+            {
+                if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || distances[coin.y, coin.x].min < distances[nextTarget.y, nextTarget.x].min) && distances[coin.y, coin.x].min *1000 < coin.leaveat - gt.TotalGameTime.Milliseconds)
                 {
-                    lastCmdAt = gameTime.TotalGameTime.TotalSeconds;
-                    gs.command("SHOOT#");
+                    nextTarget = coin;
                 }
             }
-
-
-
-            base.Update(gameTime);
+            if (nextTarget != null)// used in case no coins are in the arena
+            {
+                Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
+                switch (distances[nextTarget.y, nextTarget.x].moveTo)
+                {
+                    case 0:
+                        {
+                            nextCommand = "UP#";
+                            break;
+                        }
+                    case 1:
+                        {
+                            nextCommand = "RIGHT#";
+                            break;
+                        }
+                    case 2:
+                        {
+                            nextCommand = "DOWN#";
+                            break;
+                        }
+                    case 3:
+                        {
+                            nextCommand = "LEFT#";
+                            break;
+                        }
+                }
+            }
+            if (nextTarget == null)//go for life packs if no coins are there
+            {
+                foreach (LifepackInfo lifePack in lifeList)
+                {
+                    if ((ourPlayer.coordinates.X != lifePack.x || ourPlayer.coordinates.Y != lifePack.y) && (nextLife == null || distances[lifePack.y, lifePack.x].min < distances[nextLife.y, nextLife.x].min) && distances[lifePack.y, lifePack.x].min * 1000 < lifePack.leaveat - gt.TotalGameTime.Milliseconds)
+                    {
+                        nextLife = lifePack;
+                    }
+                }
+                if (nextLife != null)
+                {
+                    switch (distances[nextLife.y, nextLife.x].moveTo)
+                    {
+                        case 0:
+                            {
+                                nextCommand = "UP#";
+                                break;
+                            }
+                        case 1:
+                            {
+                                nextCommand = "RIGHT#";
+                                break;
+                            }
+                        case 2:
+                            {
+                                nextCommand = "DOWN#";
+                                break;
+                            }
+                        case 3:
+                            {
+                                nextCommand = "LEFT#";
+                                break;
+                            }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -198,6 +317,7 @@ namespace HYtank
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
+            gt = gameTime;//this has the game's time info
             GraphicsDevice.Clear(Color.CornflowerBlue);
             spriteBatch.Begin();
             DrawBackground();               //draw the basic background
@@ -259,7 +379,7 @@ namespace HYtank
                             {
                                 screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(brick1Texture, screenRectangle, Color.White);
-                                spriteBatch.DrawString(celltext, "25%", getTextLocationCenter(j,i,"25%"), Color.Black);
+                                spriteBatch.DrawString(celltext, "75%", getTextLocationCenter(j,i,"75%"), Color.Black);
                                 break;
                             }
                         case '2':
@@ -273,32 +393,95 @@ namespace HYtank
                             {
                                 screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(brick3Texture, screenRectangle, Color.White);
-                                spriteBatch.DrawString(celltext, "75%", getTextLocationCenter(j, i, "75%"), Color.Black);
+                                spriteBatch.DrawString(celltext, "25%", getTextLocationCenter(j, i, "25%"), Color.Black);
                                 break;
                             }
                     }
                 }
             }
-            if (p0.position.X != -1 && p0.health>0)
+
+            for (int i = 0; i < coinsList.Count; i++)
+            {
+                if (time > coinsList.ElementAt(i).leaveat)
+                {
+                    arena[coinsList.ElementAt(i).y, coinsList.ElementAt(i).x] = '\0';
+                    coinsList.RemoveAt(i);
+                }
+                else
+                {
+                    bool removed = false;
+                    for (int j = 0; j < noPlayers; j++)
+                    {
+                        if (players[j].position == coinsList.ElementAt(i).position)
+                        {
+                            arena[coinsList.ElementAt(i).y, coinsList.ElementAt(i).x] = '\0';
+                            coinsList.RemoveAt(i);
+                            removed = true;
+                            break;
+                        }
+                    }
+                    if (!removed)
+                    {
+                        spriteBatch.Draw(coinsTexture, coinsList.ElementAt(i).position, null, Color.White, 0, coinsCentre, coinsScale, SpriteEffects.None, 1);
+                        spriteBatch.DrawString(celltext, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime, getTextLocationCenter(coinsList.ElementAt(i).x, coinsList.ElementAt(i).y, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime), Color.Black);
+                    }
+                }
+            }
+
+            for (int i = 0; i < lifeList.Count; i++)
+            {
+                if (time > lifeList.ElementAt(i).leaveat)
+                {
+                    arena[lifeList.ElementAt(i).y, lifeList.ElementAt(i).x] = '\0';
+                    lifeList.RemoveAt(i);
+                }
+                else
+                {
+                    bool removed = false;
+                    for (int j = 0; j < noPlayers; j++)
+                    {
+                        if (players[j].position == lifeList.ElementAt(i).position)
+                        {
+                            arena[lifeList.ElementAt(i).y, lifeList.ElementAt(i).x] = '\0';
+                            lifeList.RemoveAt(i);
+                            removed = true;
+                            break;
+                        }
+                    }
+                    if (!removed)
+                    {
+                        spriteBatch.Draw(lifepackTexture, lifeList.ElementAt(i).position, null, Color.White, 0, lifepackCentre, lifepackScale, SpriteEffects.None, 1);
+                        spriteBatch.DrawString(celltext, lifeList.ElementAt(i).lifetime.ToString(), getTextLocationCenter(lifeList.ElementAt(i).x, lifeList.ElementAt(i).y, lifeList.ElementAt(i).lifetime.ToString()), Color.Black);
+                    }
+                }
+            }
+            
+            foreach (Bullet bullet in bullets)
+            {
+                spriteBatch.Draw(bulletTexture, bullet.position, null, Color.White, bullet.direction * 1.57f, bulletCentre, bulletScale, SpriteEffects.None, 1);
+            }
+
+            if (p0.position.X != -1 && p0.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p0.position, null, Color.DeepSkyBlue, p0.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p1.position.X != -1 && p1.health>0)
+            if (p1.position.X != -1 && p1.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p1.position, null, Color.Crimson, p1.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p2.position.X != -1 && p2.health>0)
+            if (p2.position.X != -1 && p2.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p2.position, null, Color.Yellow, p2.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p3.position.X != -1 && p3.health>0)
+            if (p3.position.X != -1 && p3.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p3.position, null, Color.LawnGreen, p3.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p4.position.X != -1 && p4.health>0)
+            if (p4.position.X != -1 && p4.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p4.position, null, Color.Violet, p4.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
+
         }
 
         private void DrawScoreboard()
@@ -379,21 +562,187 @@ namespace HYtank
             //String msg = gs.getMsg();       
         }
 
-        private Vector2 getTextLocationCenter(int x, int y, string text)//allign cebter
+        private Vector2 getTextLocationCenter(int x, int y, string text)//align center
         {
-            return new Vector2(Game1.gridOriginx + (x + .5f) * gridSize / columnsGrid- celltext.MeasureString(text).X / 2,Game1.gridOriginy + (y + .5f) * gridSize / columnsGrid);
+            return new Vector2(Game1.gridOriginx + (x + .5f) * gridSize / columnsGrid - celltext.MeasureString(text).X / 2, Game1.gridOriginy + (y + .5f) * gridSize / columnsGrid - celltext.MeasureString(text).Y / 2);
+        }
+
+        private void findDistances(int sourceX, int sourceY, int sourceOrientation)
+        {
+            for (int i = 0; i < columnsGrid; i++)
+            {
+                for (int j = 0; j < columnsGrid; j++)
+                {
+                    distances[i, j].distances[0] = distances[i, j].distances[1] = distances[i, j].distances[2] = distances[i, j].distances[3] = distances[i, j].min = int.MaxValue;
+                }
+            }
+            Queue<int[]> q = new Queue<int[]>();
+            q.Enqueue(new int[] { sourceX, sourceY });
+
+            distances[sourceY, sourceX].setDistance(0, sourceOrientation == 0 ? 0 : 1, -1);
+            distances[sourceY, sourceX].setDistance(1, sourceOrientation == 1 ? 0 : 1, -1);
+            distances[sourceY, sourceX].setDistance(2, sourceOrientation == 2 ? 0 : 1, -1);
+            distances[sourceY, sourceX].setDistance(3, sourceOrientation == 3 ? 0 : 1, -1);
+
+            int[] tmp;
+            int parentDistance;
+            int tmpMov;
+
+            while (q.Count > 0)
+            {
+                tmp = q.Dequeue();
+                parentDistance = distances[tmp[1], tmp[0]].getDistance(0);
+                if (tmp[1] > 0 && !barriers.Contains(arena[tmp[1] - 1, tmp[0]]))
+                {
+                    if (distances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 2)
+                    {
+                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        {
+                            tmpMov = 0;
+                        }
+                        else
+                        {
+                            tmpMov = distances[tmp[1], tmp[0]].move[0];
+                        }
+
+                        distances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, tmpMov);
+                        distances[tmp[1] - 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
+                        distances[tmp[1] - 1, tmp[0]].setDistance(2, parentDistance + 2, tmpMov);
+                        distances[tmp[1] - 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
+                        
+                        q.Enqueue(new int[] { tmp[0], tmp[1] - 1 });
+                    }
+                    else if (distances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 1)
+                    {
+                        distances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, distances[tmp[1], tmp[0]].move[0]);
+                        q.Enqueue(new int[] { tmp[0], tmp[1] - 1 });
+                    }
+                }
+
+                parentDistance = distances[tmp[1], tmp[0]].getDistance(1);
+                if (tmp[0] < columnsGrid - 1 && !barriers.Contains(arena[tmp[1], tmp[0] + 1]))
+                {
+                    if (distances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 2)
+                    {
+                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        {
+                            tmpMov = 1;
+                        }
+                        else
+                        {
+                            tmpMov = distances[tmp[1], tmp[0]].move[1];
+                        }
+
+                        distances[tmp[1], tmp[0] + 1].setDistance(0, parentDistance + 2, tmpMov);
+                        distances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, tmpMov);
+                        distances[tmp[1], tmp[0] + 1].setDistance(2, parentDistance + 2, tmpMov);
+                        distances[tmp[1], tmp[0] + 1].setDistance(3, parentDistance + 2, tmpMov);
+
+                        q.Enqueue(new int[] { tmp[0] + 1, tmp[1] });
+                    }
+                    else if (distances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 1)
+                    {
+                        distances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, distances[tmp[1], tmp[0]].move[1]);
+                        q.Enqueue(new int[] { tmp[0] + 1, tmp[1] });
+                    }
+                }
+                
+                parentDistance = distances[tmp[1], tmp[0]].getDistance(2);
+                if (tmp[1] < columnsGrid - 1 && !barriers.Contains(arena[tmp[1] + 1, tmp[0]]))
+                {
+                    if (distances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 2)
+                    {
+                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        {
+                            tmpMov = 2;
+                        }
+                        else
+                        {
+                            tmpMov = distances[tmp[1], tmp[0]].move[2];
+                        }
+
+                        distances[tmp[1] + 1, tmp[0]].setDistance(0, parentDistance + 2, tmpMov);
+                        distances[tmp[1] + 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
+                        distances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, tmpMov);
+                        distances[tmp[1] + 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
+
+                        q.Enqueue(new int[] { tmp[0], tmp[1] + 1 });
+                    }
+                    else if (distances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 1)
+                    {
+                        distances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, distances[tmp[1], tmp[0]].move[2]);
+                        q.Enqueue(new int[] { tmp[0], tmp[1] + 1 });
+                    }
+                }
+                
+
+                parentDistance = distances[tmp[1], tmp[0]].getDistance(3);
+                if (tmp[0] > 0 && !barriers.Contains(arena[tmp[1], tmp[0] - 1]))
+                {
+                    if (distances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 2)
+                    {
+                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        {
+                            tmpMov = 3;
+                        }
+                        else
+                        {
+                            tmpMov = distances[tmp[1], tmp[0]].move[3];
+                        }
+
+                        distances[tmp[1], tmp[0] - 1].setDistance(0, parentDistance + 2, tmpMov);
+                        distances[tmp[1], tmp[0] - 1].setDistance(1, parentDistance + 2, tmpMov);
+                        distances[tmp[1], tmp[0] - 1].setDistance(2, parentDistance + 2, tmpMov);
+                        distances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, tmpMov);
+
+                        q.Enqueue(new int[] { tmp[0] - 1, tmp[1] });
+                    }
+                    else if (distances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 1)
+                    {
+                        distances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, distances[tmp[1], tmp[0]].move[3]);
+                        q.Enqueue(new int[] { tmp[0] - 1, tmp[1] });
+                    }
+                }
+
+            }
         }
 
     }
 
+    class Cell
+    {
+        public int[] distances = { int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue };
+        public int[] move= new int[4];
+        public int min = int.MaxValue;
+        public int moveTo;//this is the move need to approch the cell. 0- up, 1-right..... 
 
-    class PlayerInfo
+        public void setDistance(int orientation, int distance,int mov)
+        {
+            distances[orientation] = distance;
+            move[orientation]=mov;
+            if (distance < min)
+            {
+                min = distance;
+                moveTo = mov;
+
+            }
+        }
+        public int getDistance(int orientation)
+        {
+            return distances[orientation];
+        }
+    }
+
+
+
+    public class PlayerInfo
     {
         public Vector2 position;
+        public Point coordinates;
         public int direction, health = 0, coins = 0, points = 0;
         public Boolean shot = false;
         public Boolean participant = false;
-        public PlayerInfo(float x, float y)
+        public PlayerInfo(int x, int y)
         {
             position = new Vector2(x, y);
         }
@@ -401,22 +750,27 @@ namespace HYtank
     public class CoinsInfo
     {
         public Vector2 position;
-        public int value, lifetime;
-        public CoinsInfo(float x, float y,int val, int lft)
+        public int value;
+        public double leaveat;
+        public int x, y, lifetime;
+        public CoinsInfo(float xpos, float ypos,int val, double lt,int x,int y,int lifetime)
         {
-            position = new Vector2(x, y);
             value= val;
-            lifetime=lft;
+            leaveat=lt;
+            position = new Vector2(xpos, ypos);
+            this.x = x; this.y = y; this.lifetime = lifetime;
         }
     }
     public class LifepackInfo
     {
         public Vector2 position;
-        public int lifetime;
-        public LifepackInfo(float x, float y,int lft)
+        public double leaveat;
+        public int x, y, lifetime;
+        public LifepackInfo(float xpos, float ypos, double lt, int x, int y, int lifetime)
         {
-            position = new Vector2(x, y);
-            lifetime=lft;
+            leaveat = lt;
+            position = new Vector2(xpos, ypos);
+            this.x = x; this.y = y; this.lifetime = lifetime;
         }
     }
 }
