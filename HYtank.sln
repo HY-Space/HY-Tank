@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HYtank", "HYtank\HYtank\HYtank.csproj", "{755323DE-DCB5-45D3-8D89-5C164B098497}"
 EndProject
-Project("{96E2B04D-8817-42C6-938A-82C39BA4D311}") = "HYtankContent", "HYtank\HYtankContent\HYtankContent.contentproj", "{4CE522D9-F3E3-4111-8BCD-1E8DD0C7CE83}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HYtankContent", "HYtank\HYtankContent\HYtankContent.contentproj", "{4CE522D9-F3E3-4111-8BCD-1E8DD0C7CE83}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -44,6 +44,9 @@ namespace HYtank
         public static List<LifepackInfo> lifeList = new List<LifepackInfo>();
         public static LinkedList<Bullet> bullets = new LinkedList<Bullet>();
 
+        int bulletCount; //used to fire more
+        int allowFireCount=0;//used to control gaps between bursts
+
         SpriteFont title,body,celltext;
 
         GameSocket gs = new GameSocket();
@@ -58,11 +61,12 @@ namespace HYtank
         float angle;
 
         //Timer timer = new Timer(1003);//original
-        Timer timer = new Timer(1400);//testing
+        Timer timer = new Timer(1200);//testing
+        Timer bulletTimer = new Timer(17);//testing
         String nextCommand = "";
 
         Cell[,] distances=new Cell[columnsGrid, columnsGrid];// has the format [y,x];
-        HashSet<char> barriers= new HashSet<char>{'w','b','s','1','2','3'};
+        HashSet<char> barriers= new HashSet<char>{'w','b','s','1','2','3','t'};
         GameTime gt;
 
         public Game1()
@@ -95,9 +99,7 @@ namespace HYtank
             }
 
             gs.setGrid(arena, p0, p1, p2, p3, p4, gridSize, columnsGrid);
-            gs.connectToServer();
-            gs.joinGame();
-            gs.initialize();
+            
 
             tankCentre = new Vector2(49, 49);//origin needs to be defined with respect to the original image
             tankScale = cellWidth * 1f / 100;
@@ -109,7 +111,7 @@ namespace HYtank
             coinsScale = lifepackScale = cellWidth * 1f / 100; 
 
             timer.Elapsed+=new ElapsedEventHandler(timer_Elapsed);
-            timer.Start();
+            bulletTimer.Elapsed += new ElapsedEventHandler(bulletTimer_Elapsed);
             
         }
 
@@ -161,6 +163,19 @@ namespace HYtank
             screenWidth = device.PresentationParameters.BackBufferWidth;
             screenHeight = device.PresentationParameters.BackBufferHeight;
             // TODO: use this.Content to load your game content here
+
+
+            gs.connectToServer();
+            gs.joinGame();
+
+            //test
+            GameTime temptime = new GameTime();
+            Console.WriteLine(temptime.TotalGameTime);
+            gs.initialize();
+            Console.WriteLine(temptime.TotalGameTime);
+            timer.Start();
+
+
         }
 
         /// <summary>
@@ -189,29 +204,43 @@ namespace HYtank
             gs.update();
 
             ai.nextMove(arena);
-            ///////////////////////////////Test
+
+
+            //uncomment the following to allow keyboard handling of the tank
+
+            /*
             KeyboardState keyState = Keyboard.GetState();
             if (keyState.IsKeyDown(Keys.Up))
             {
                 nextCommand = "UP#";
+                gs.command(nextCommand);
             }
             else if (keyState.IsKeyDown(Keys.Down))
             {
                 nextCommand = "DOWN#";
+                gs.command(nextCommand);
             }
             else if (keyState.IsKeyDown(Keys.Left))
             {
                 nextCommand = "LEFT#";
+                gs.command(nextCommand);
             }
             else if (keyState.IsKeyDown(Keys.Right))
             {
                 nextCommand = "RIGHT#";
+                gs.command(nextCommand);
             }
             else if (keyState.IsKeyDown(Keys.Space))
             {
                 nextCommand = "SHOOT#";
+                //Console.WriteLine(gameTime.TotalGameTime.TotalMilliseconds);
+                //gs.command(nextCommand);
+                bulletCount = 0;
+                bulletTimer.Start();
             }
-            
+            */
+            //keyboar controlling ends here
+
             base.Update(gameTime);
             time = gameTime.TotalGameTime.TotalMilliseconds;
         }
@@ -220,6 +249,72 @@ namespace HYtank
 
         private void timer_Elapsed(Object sender, ElapsedEventArgs arg)
         {
+
+            if (allowFireCount < 5)
+            {
+                allowFireCount++;
+            }
+
+            else
+            {
+                //These check for inline oponents to fire
+
+                if (ourPlayer.direction == 0)
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y < ourPlayer.coordinates.Y /*&& players[i].direction==2*/)
+                        {
+                            bulletTimer.Start();
+                            allowFireCount = 0;
+                            return;
+                        }
+                    }
+                }
+                if (ourPlayer.direction == 1)
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X > ourPlayer.coordinates.X /*&& players[i].direction == 3*/)
+                        {
+                            bulletTimer.Start();
+                            allowFireCount = 0;
+                            return;
+                        }
+                    }
+                }
+                if (ourPlayer.direction == 2)
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y > ourPlayer.coordinates.Y /*&& players[i].direction == 0*/)
+                        {
+                            bulletTimer.Start();
+                            allowFireCount = 0;
+                            return;
+                        }
+                    }
+                }
+                if (ourPlayer.direction == 3)
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X < ourPlayer.coordinates.X /*&& players[i].direction == 1*/)
+                        {
+                            bulletTimer.Start();
+                            allowFireCount = 0;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            if ("".Equals(nextCommand))
+            {
+                setNextMove();
+            }
+
+
             if (!("".Equals(nextCommand)))
             {
                 timer.Stop();
@@ -227,11 +322,23 @@ namespace HYtank
                 timer.Start();
                 nextCommand = "";
             }
-            //Stopwatch st = new Stopwatch();//test
-            //st.Start();
+
             setNextMove();
-            //st.Stop();
                
+        }
+
+        private void bulletTimer_Elapsed(Object sender, ElapsedEventArgs arg)
+        {
+            
+            gs.command("SHOOT#");//test
+
+            bulletCount++;
+
+            if (bulletCount == 10)
+            {
+                bulletTimer.Stop();
+                bulletCount = 0;
+            }
         }
 
         public void setNextMove()
@@ -248,7 +355,7 @@ namespace HYtank
             }
             if (nextTarget != null)// used in case no coins are in the arena
             {
-                Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
+                //Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
                 switch (distances[nextTarget.y, nextTarget.x].moveTo)
                 {
                     case 0:
@@ -550,10 +657,13 @@ namespace HYtank
             //Allignment: Right
             spriteBatch.DrawString(body, player.points.ToString(), new Vector2(scoreorgx + columnGap * 2 - body.MeasureString(player.points.ToString()).X-5, scoreorgy + rowGap * playerno), Color.WhiteSmoke);
             spriteBatch.DrawString(body, player.coins.ToString(), new Vector2(scoreorgx + columnGap * 3 - body.MeasureString(player.coins.ToString()).X-5, scoreorgy + rowGap * playerno), Color.WhiteSmoke);
-            if(player.health>0)
-                spriteBatch.DrawString(body, player.health.ToString(), new Vector2(scoreorgx + columnGap * 4 - body.MeasureString(player.health.ToString()).X-5, scoreorgy + rowGap * playerno), Color.WhiteSmoke);
+            if (player.health > 0)
+                spriteBatch.DrawString(body, player.health.ToString(), new Vector2(scoreorgx + columnGap * 4 - body.MeasureString(player.health.ToString()).X - 5, scoreorgy + rowGap * playerno), Color.WhiteSmoke);
             else
-                spriteBatch.DrawString(body, "Dead", new Vector2(scoreorgx + columnGap * 4 - body.MeasureString("Dead").X-5, scoreorgy + rowGap * playerno), Color.WhiteSmoke);
+            {
+                spriteBatch.DrawString(body, "Dead", new Vector2(scoreorgx + columnGap * 4 - body.MeasureString("Dead").X - 5, scoreorgy + rowGap * playerno), Color.WhiteSmoke);
+                
+            }
         }
 
 

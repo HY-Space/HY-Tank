@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.IO;
 using Microsoft.Xna.Framework;
+using System.Diagnostics;
 
 namespace HYtank
 {
@@ -149,9 +150,10 @@ namespace HYtank
 
                 if (initialized && positioned)
                     break;
+
+                //Console.WriteLine("Hi");
             }
         }
-        //for each second try to make a move... 
 
         public void update()
         {
@@ -174,8 +176,35 @@ namespace HYtank
                     String[] brickInfo;
                     PlayerInfo p;
                     int tmp;
+
+
+                    //clearing the current player positions
+                    if (p0.coordinates.X > -1)
+                    {
+                        grid[p0.coordinates.Y, p0.coordinates.X] = '\0';
+                    }
+                    if (p1.coordinates.X > -1)
+                    {
+                        grid[p1.coordinates.Y, p1.coordinates.X] = '\0';
+                    }
+                    if (p2.coordinates.X > -1)
+                    {
+                        grid[p2.coordinates.Y, p2.coordinates.X] = '\0';
+                    }
+                    if (p3.coordinates.X > -1)
+                    {
+                        grid[p3.coordinates.Y, p3.coordinates.X] = '\0';
+                    }
+                    if (p4.coordinates.X > -1)
+                    {
+                        grid[p4.coordinates.Y, p4.coordinates.X] = '\0';
+                    }
+
+
+
                     for (int i = 1; i < info.Length - 1; i++)
                     {
+
                         playerInfo = info[i].Split(';', ',');
                         p = null;
                         tmp = 0;
@@ -221,13 +250,18 @@ namespace HYtank
                         if (p != null)
                         {
                             p.participant = true;
+                            //reset the current position on the grid
                             if (p.coordinates.X != -1)
                             {
                                 Game1.tankGrid[p.coordinates.Y, p.coordinates.X] = -1;
                             }
                             p.coordinates.X=Int32.Parse(playerInfo[1]);
                             p.coordinates.Y=Int32.Parse(playerInfo[2]);
-                            Game1.tankGrid[p.coordinates.Y, p.coordinates.X] = tmp-1;
+
+                            
+                            
+
+                            
                             p.position.X = Game1.gridOriginx + (p.coordinates.X + .5f) * gridSize / columnsGrid;
                             p.position.Y = Game1.gridOriginy + (p.coordinates.Y + .5f) * gridSize / columnsGrid;
                             p.direction = Int32.Parse(playerInfo[3]);
@@ -237,6 +271,14 @@ namespace HYtank
                                 new Bullet(new Point(p.coordinates.X, p.coordinates.Y), p.direction);//bullet will be added automatically to the list of bullets
                             }
                             p.health = Int32.Parse(playerInfo[5]);
+
+                            //marks the player on the grid only if alive
+                            if (p.health != 0)
+                            {
+                                grid[p.coordinates.Y, p.coordinates.X] = 't';
+                                Game1.tankGrid[p.coordinates.Y, p.coordinates.X] = tmp - 1;
+                            }
+
                             p.coins = Int32.Parse(playerInfo[6]);
                             p.points = Int32.Parse(playerInfo[7]);
                             if (Game1.noPlayers < tmp)
