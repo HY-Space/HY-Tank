@@ -179,23 +179,23 @@ namespace HYtank
 
 
                     //clearing the current player positions
-                    if (p0.coordinates.X > -1)
+                    if (p0.coordinates.X > -1 && p0.health > 0)
                     {
                         grid[p0.coordinates.Y, p0.coordinates.X] = '\0';
                     }
-                    if (p1.coordinates.X > -1)
+                    if (p1.coordinates.X > -1 && p1.health > 0)
                     {
                         grid[p1.coordinates.Y, p1.coordinates.X] = '\0';
                     }
-                    if (p2.coordinates.X > -1)
+                    if (p2.coordinates.X > -1 && p2.health > 0)
                     {
                         grid[p2.coordinates.Y, p2.coordinates.X] = '\0';
                     }
-                    if (p3.coordinates.X > -1)
+                    if (p3.coordinates.X > -1 && p3.health > 0)
                     {
                         grid[p3.coordinates.Y, p3.coordinates.X] = '\0';
                     }
-                    if (p4.coordinates.X > -1)
+                    if (p4.coordinates.X > -1 && p4.health > 0)
                     {
                         grid[p4.coordinates.Y, p4.coordinates.X] = '\0';
                     }
@@ -308,7 +308,7 @@ namespace HYtank
                     {
                         for (int j = 0; j < Game1.noPlayers; j++)
                         {
-                            if (Game1.players[j].position == Game1.coinsList.ElementAt(i).position && Game1.players[j].health!=0)
+                            if (Game1.players[j].position.X == Game1.coinsList.ElementAt(i).position.X && Game1.players[j].position.Y == Game1.coinsList.ElementAt(i).position.Y && Game1.players[j].health != 0)
                             {
                                 Game1.arena[Game1.coinsList.ElementAt(i).y, Game1.coinsList.ElementAt(i).x] = '\0';
                                 Game1.coinsList.RemoveAt(i);

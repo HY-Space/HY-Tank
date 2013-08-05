@@ -429,7 +429,7 @@ namespace HYtank
             for (int i = 0; i < 5; i++)
             {
                 nextTarget = null;
-                if (players[i] != ourPlayer)
+                if (players[i] != ourPlayer && players[i].health>0)
                 {
                     foreach (CoinsInfo coin in coinsList)
                     {
@@ -715,23 +715,43 @@ namespace HYtank
                 spriteBatch.Draw(bulletTexture, bullet.position, null, Color.White, bullet.direction * 1.57f, bulletCentre, bulletScale, SpriteEffects.None, 1);
             }
 
-            if (p0.position.X != -1 && p0.health > 0)
+            if (p0.position.X != -1 && p0.health > 0 && p0 == ourPlayer)
+            {
+                spriteBatch.Draw(tankTexture, p0.position, null, Color.DeepSkyBlue, p0.direction * 1.57f, tankCentre, tankScale*1.2f, SpriteEffects.FlipVertically, 1);
+            }
+            else if (p0.position.X != -1 && p0.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p0.position, null, Color.DeepSkyBlue, p0.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p1.position.X != -1 && p1.health > 0)
+            if (p1.position.X != -1 && p1.health > 0 && p1 == ourPlayer)
+            {
+                spriteBatch.Draw(tankTexture, p1.position, null, Color.Crimson, p1.direction * 1.57f, tankCentre, tankScale * 1.2f, SpriteEffects.FlipVertically, 1);
+            }
+            else if (p1.position.X != -1 && p1.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p1.position, null, Color.Crimson, p1.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p2.position.X != -1 && p2.health > 0)
+            if (p2.position.X != -1 && p2.health > 0 && p2 == ourPlayer)
+            {
+                spriteBatch.Draw(tankTexture, p2.position, null, Color.Yellow, p2.direction * 1.57f, tankCentre, tankScale * 1.2f, SpriteEffects.FlipVertically, 1);
+            }
+            else if (p2.position.X != -1 && p2.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p2.position, null, Color.Yellow, p2.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p3.position.X != -1 && p3.health > 0)
+            if (p3.position.X != -1 && p3.health > 0 && p3 == ourPlayer)
+            {
+                spriteBatch.Draw(tankTexture, p3.position, null, Color.LawnGreen, p3.direction * 1.57f, tankCentre, tankScale * 1.2f, SpriteEffects.FlipVertically, 1);
+            }
+            else if (p3.position.X != -1 && p3.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p3.position, null, Color.LawnGreen, p3.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
-            if (p4.position.X != -1 && p4.health > 0)
+            if (p4.position.X != -1 && p4.health > 0 && p4 == ourPlayer)
+            {
+                spriteBatch.Draw(tankTexture, p4.position, null, Color.Violet, p4.direction * 1.57f, tankCentre, tankScale * 1.2f, SpriteEffects.FlipVertically, 1);
+            }
+            else if (p4.position.X != -1 && p4.health > 0)
             {
                 spriteBatch.Draw(tankTexture, p4.position, null, Color.Violet, p4.direction * 1.57f, tankCentre, tankScale, SpriteEffects.FlipVertically, 1);
             }
