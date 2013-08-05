@@ -60,13 +60,15 @@ namespace HYtank
        
         float angle;
 
+        //Changing the timer should also change the timePerStep value to calculate correctly the time to coin piles
+        int timePerStep=1300;
         //Timer timer = new Timer(1003);//original
-        Timer timer = new Timer(1200);//testing
-        Timer bulletTimer = new Timer(17);//testing
+        Timer timer = new Timer(1300);//testing
+        Timer bulletTimer = new Timer(2);//testing
         String nextCommand = "";
 
-        Cell[,] distances=new Cell[columnsGrid, columnsGrid];// has the format [y,x];
-        HashSet<char> barriers= new HashSet<char>{'w','b','s','1','2','3','t'};
+        Cell[,] myDistances=new Cell[columnsGrid, columnsGrid];// has the format [y,x];
+        HashSet<char> barriers= new HashSet<char>{'w','b','s','1','2','3'};// add 't' here if tanks need to be considered as obstacles
         GameTime gt;
 
         public Game1()
@@ -94,7 +96,7 @@ namespace HYtank
             {
                 for (int j = 0; j < columnsGrid; j++)
                 {
-                    distances[i, j]=new Cell();
+                    myDistances[i, j]=new Cell();
                 }
             }
 
@@ -250,7 +252,7 @@ namespace HYtank
         private void timer_Elapsed(Object sender, ElapsedEventArgs arg)
         {
 
-            if (allowFireCount < 5)
+            if (allowFireCount < 0)//use this to control the delay between bursts
             {
                 allowFireCount++;
             }
@@ -263,7 +265,7 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y < ourPlayer.coordinates.Y /*&& players[i].direction==2*/)
+                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y < ourPlayer.coordinates.Y /*&& (players[i].direction==2 || players[i].direction == 0)*/)
                         {
                             bulletTimer.Start();
                             allowFireCount = 0;
@@ -275,7 +277,7 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X > ourPlayer.coordinates.X /*&& players[i].direction == 3*/)
+                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X > ourPlayer.coordinates.X /*&& (players[i].direction == 3 || players[i].direction == 1)*/)
                         {
                             bulletTimer.Start();
                             allowFireCount = 0;
@@ -287,7 +289,7 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y > ourPlayer.coordinates.Y /*&& players[i].direction == 0*/)
+                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y > ourPlayer.coordinates.Y /*&& (players[i].direction == 0 || players[i].direction == 2)*/)
                         {
                             bulletTimer.Start();
                             allowFireCount = 0;
@@ -299,7 +301,7 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X < ourPlayer.coordinates.X /*&& players[i].direction == 1*/)
+                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X < ourPlayer.coordinates.X /*&& (players[i].direction == 1 || players[i].direction == 3)*/)
                         {
                             bulletTimer.Start();
                             allowFireCount = 0;
@@ -334,7 +336,7 @@ namespace HYtank
 
             bulletCount++;
 
-            if (bulletCount == 10)
+            if (bulletCount == 4)
             {
                 bulletTimer.Stop();
                 bulletCount = 0;
@@ -343,12 +345,14 @@ namespace HYtank
 
         public void setNextMove()
         {
+            //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
             findDistances(ourPlayer.coordinates.X, ourPlayer.coordinates.Y, ourPlayer.direction);
+            //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
             CoinsInfo nextTarget = null;
             LifepackInfo nextLife = null;
             foreach (CoinsInfo coin in coinsList)
             {
-                if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || distances[coin.y, coin.x].min < distances[nextTarget.y, nextTarget.x].min) && distances[coin.y, coin.x].min *1000 < coin.leaveat - gt.TotalGameTime.Milliseconds)
+                if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || myDistances[coin.y, coin.x].min < myDistances[nextTarget.y, nextTarget.x].min) && myDistances[coin.y, coin.x].min *timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
                 {
                     nextTarget = coin;
                 }
@@ -356,7 +360,7 @@ namespace HYtank
             if (nextTarget != null)// used in case no coins are in the arena
             {
                 //Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
-                switch (distances[nextTarget.y, nextTarget.x].moveTo)
+                switch (myDistances[nextTarget.y, nextTarget.x].moveTo)
                 {
                     case 0:
                         {
@@ -384,14 +388,14 @@ namespace HYtank
             {
                 foreach (LifepackInfo lifePack in lifeList)
                 {
-                    if ((ourPlayer.coordinates.X != lifePack.x || ourPlayer.coordinates.Y != lifePack.y) && (nextLife == null || distances[lifePack.y, lifePack.x].min < distances[nextLife.y, nextLife.x].min) && distances[lifePack.y, lifePack.x].min * 1000 < lifePack.leaveat - gt.TotalGameTime.Milliseconds)
+                    if ((ourPlayer.coordinates.X != lifePack.x || ourPlayer.coordinates.Y != lifePack.y) && (nextLife == null || myDistances[lifePack.y, lifePack.x].min < myDistances[nextLife.y, nextLife.x].min) && myDistances[lifePack.y, lifePack.x].min * timePerStep < lifePack.leaveat - gt.TotalGameTime.TotalMilliseconds)
                     {
                         nextLife = lifePack;
                     }
                 }
                 if (nextLife != null)
                 {
-                    switch (distances[nextLife.y, nextLife.x].moveTo)
+                    switch (myDistances[nextLife.y, nextLife.x].moveTo)
                     {
                         case 0:
                             {
@@ -413,6 +417,45 @@ namespace HYtank
                                 nextCommand = "LEFT#";
                                 break;
                             }
+                    }
+                }
+            }
+
+            if (nextTarget == null)//this segment is used to move the tank without going nowhere
+            {
+                foreach (CoinsInfo coin in coinsList)
+                {
+                    if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || myDistances[coin.y, coin.x].min < myDistances[nextTarget.y, nextTarget.x].min) && myDistances[coin.y, coin.x].min * timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
+                    {
+                        nextTarget = coin;
+                    }
+
+                    if (nextTarget != null)// used in case no coins are in the arena
+                    {
+                        //Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
+                        switch (myDistances[nextTarget.y, nextTarget.x].moveTo)
+                        {
+                            case 0:
+                                {
+                                    nextCommand = "UP#";
+                                    break;
+                                }
+                            case 1:
+                                {
+                                    nextCommand = "RIGHT#";
+                                    break;
+                                }
+                            case 2:
+                                {
+                                    nextCommand = "DOWN#";
+                                    break;
+                                }
+                            case 3:
+                                {
+                                    nextCommand = "LEFT#";
+                                    break;
+                                }
+                        }
                     }
                 }
             }
@@ -530,7 +573,7 @@ namespace HYtank
                     if (!removed)
                     {
                         spriteBatch.Draw(coinsTexture, coinsList.ElementAt(i).position, null, Color.White, 0, coinsCentre, coinsScale, SpriteEffects.None, 1);
-                        spriteBatch.DrawString(celltext, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime, getTextLocationCenter(coinsList.ElementAt(i).x, coinsList.ElementAt(i).y, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime), Color.Black);
+                        spriteBatch.DrawString(celltext, "$" + coinsList.ElementAt(i).value + "\n" + ((int)Math.Round(coinsList.ElementAt(i).leaveat - gt.TotalGameTime.TotalMilliseconds))/*coinsList.ElementAt(i).lifetime*/, getTextLocationCenter(coinsList.ElementAt(i).x, coinsList.ElementAt(i).y, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime), Color.Black);
                     }
                 }
             }
@@ -558,7 +601,7 @@ namespace HYtank
                     if (!removed)
                     {
                         spriteBatch.Draw(lifepackTexture, lifeList.ElementAt(i).position, null, Color.White, 0, lifepackCentre, lifepackScale, SpriteEffects.None, 1);
-                        spriteBatch.DrawString(celltext, lifeList.ElementAt(i).lifetime.ToString(), getTextLocationCenter(lifeList.ElementAt(i).x, lifeList.ElementAt(i).y, lifeList.ElementAt(i).lifetime.ToString()), Color.Black);
+                        spriteBatch.DrawString(celltext, ((int)Math.Round(lifeList.ElementAt(i).leaveat - gt.TotalGameTime.TotalMilliseconds)).ToString(), getTextLocationCenter(lifeList.ElementAt(i).x, lifeList.ElementAt(i).y, lifeList.ElementAt(i).lifetime.ToString()), Color.Black);
                     }
                 }
             }
@@ -683,16 +726,16 @@ namespace HYtank
             {
                 for (int j = 0; j < columnsGrid; j++)
                 {
-                    distances[i, j].distances[0] = distances[i, j].distances[1] = distances[i, j].distances[2] = distances[i, j].distances[3] = distances[i, j].min = int.MaxValue;
+                    myDistances[i, j].distances[0] = myDistances[i, j].distances[1] = myDistances[i, j].distances[2] = myDistances[i, j].distances[3] = myDistances[i, j].min = int.MaxValue;
                 }
             }
             Queue<int[]> q = new Queue<int[]>();
             q.Enqueue(new int[] { sourceX, sourceY });
 
-            distances[sourceY, sourceX].setDistance(0, sourceOrientation == 0 ? 0 : 1, -1);
-            distances[sourceY, sourceX].setDistance(1, sourceOrientation == 1 ? 0 : 1, -1);
-            distances[sourceY, sourceX].setDistance(2, sourceOrientation == 2 ? 0 : 1, -1);
-            distances[sourceY, sourceX].setDistance(3, sourceOrientation == 3 ? 0 : 1, -1);
+            myDistances[sourceY, sourceX].setDistance(0, sourceOrientation == 0 ? 0 : 1, -1);
+            myDistances[sourceY, sourceX].setDistance(1, sourceOrientation == 1 ? 0 : 1, -1);
+            myDistances[sourceY, sourceX].setDistance(2, sourceOrientation == 2 ? 0 : 1, -1);
+            myDistances[sourceY, sourceX].setDistance(3, sourceOrientation == 3 ? 0 : 1, -1);
 
             int[] tmp;
             int parentDistance;
@@ -701,115 +744,115 @@ namespace HYtank
             while (q.Count > 0)
             {
                 tmp = q.Dequeue();
-                parentDistance = distances[tmp[1], tmp[0]].getDistance(0);
+                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(0);
                 if (tmp[1] > 0 && !barriers.Contains(arena[tmp[1] - 1, tmp[0]]))
                 {
-                    if (distances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 2)
+                    if (myDistances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 2)
                     {
-                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 0;
                         }
                         else
                         {
-                            tmpMov = distances[tmp[1], tmp[0]].move[0];
+                            tmpMov = myDistances[tmp[1], tmp[0]].move[0];
                         }
 
-                        distances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, tmpMov);
-                        distances[tmp[1] - 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
-                        distances[tmp[1] - 1, tmp[0]].setDistance(2, parentDistance + 2, tmpMov);
-                        distances[tmp[1] - 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, tmpMov);
+                        myDistances[tmp[1] - 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1] - 1, tmp[0]].setDistance(2, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1] - 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
                         
                         q.Enqueue(new int[] { tmp[0], tmp[1] - 1 });
                     }
-                    else if (distances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 1)
+                    else if (myDistances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 1)
                     {
-                        distances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, distances[tmp[1], tmp[0]].move[0]);
+                        myDistances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[0]);
                         q.Enqueue(new int[] { tmp[0], tmp[1] - 1 });
                     }
                 }
 
-                parentDistance = distances[tmp[1], tmp[0]].getDistance(1);
+                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(1);
                 if (tmp[0] < columnsGrid - 1 && !barriers.Contains(arena[tmp[1], tmp[0] + 1]))
                 {
-                    if (distances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 2)
+                    if (myDistances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 2)
                     {
-                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 1;
                         }
                         else
                         {
-                            tmpMov = distances[tmp[1], tmp[0]].move[1];
+                            tmpMov = myDistances[tmp[1], tmp[0]].move[1];
                         }
 
-                        distances[tmp[1], tmp[0] + 1].setDistance(0, parentDistance + 2, tmpMov);
-                        distances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, tmpMov);
-                        distances[tmp[1], tmp[0] + 1].setDistance(2, parentDistance + 2, tmpMov);
-                        distances[tmp[1], tmp[0] + 1].setDistance(3, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1], tmp[0] + 1].setDistance(0, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, tmpMov);
+                        myDistances[tmp[1], tmp[0] + 1].setDistance(2, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1], tmp[0] + 1].setDistance(3, parentDistance + 2, tmpMov);
 
                         q.Enqueue(new int[] { tmp[0] + 1, tmp[1] });
                     }
-                    else if (distances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 1)
+                    else if (myDistances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 1)
                     {
-                        distances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, distances[tmp[1], tmp[0]].move[1]);
+                        myDistances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[1]);
                         q.Enqueue(new int[] { tmp[0] + 1, tmp[1] });
                     }
                 }
                 
-                parentDistance = distances[tmp[1], tmp[0]].getDistance(2);
+                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(2);
                 if (tmp[1] < columnsGrid - 1 && !barriers.Contains(arena[tmp[1] + 1, tmp[0]]))
                 {
-                    if (distances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 2)
+                    if (myDistances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 2)
                     {
-                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 2;
                         }
                         else
                         {
-                            tmpMov = distances[tmp[1], tmp[0]].move[2];
+                            tmpMov = myDistances[tmp[1], tmp[0]].move[2];
                         }
 
-                        distances[tmp[1] + 1, tmp[0]].setDistance(0, parentDistance + 2, tmpMov);
-                        distances[tmp[1] + 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
-                        distances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, tmpMov);
-                        distances[tmp[1] + 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1] + 1, tmp[0]].setDistance(0, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1] + 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, tmpMov);
+                        myDistances[tmp[1] + 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
 
                         q.Enqueue(new int[] { tmp[0], tmp[1] + 1 });
                     }
-                    else if (distances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 1)
+                    else if (myDistances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 1)
                     {
-                        distances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, distances[tmp[1], tmp[0]].move[2]);
+                        myDistances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[2]);
                         q.Enqueue(new int[] { tmp[0], tmp[1] + 1 });
                     }
                 }
                 
 
-                parentDistance = distances[tmp[1], tmp[0]].getDistance(3);
+                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(3);
                 if (tmp[0] > 0 && !barriers.Contains(arena[tmp[1], tmp[0] - 1]))
                 {
-                    if (distances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 2)
+                    if (myDistances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 2)
                     {
-                        if (distances[tmp[1], tmp[0]].moveTo == -1)
+                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 3;
                         }
                         else
                         {
-                            tmpMov = distances[tmp[1], tmp[0]].move[3];
+                            tmpMov = myDistances[tmp[1], tmp[0]].move[3];
                         }
 
-                        distances[tmp[1], tmp[0] - 1].setDistance(0, parentDistance + 2, tmpMov);
-                        distances[tmp[1], tmp[0] - 1].setDistance(1, parentDistance + 2, tmpMov);
-                        distances[tmp[1], tmp[0] - 1].setDistance(2, parentDistance + 2, tmpMov);
-                        distances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, tmpMov);
+                        myDistances[tmp[1], tmp[0] - 1].setDistance(0, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1], tmp[0] - 1].setDistance(1, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1], tmp[0] - 1].setDistance(2, parentDistance + 2, tmpMov);
+                        myDistances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, tmpMov);
 
                         q.Enqueue(new int[] { tmp[0] - 1, tmp[1] });
                     }
-                    else if (distances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 1)
+                    else if (myDistances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 1)
                     {
-                        distances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, distances[tmp[1], tmp[0]].move[3]);
+                        myDistances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[3]);
                         q.Enqueue(new int[] { tmp[0] - 1, tmp[1] });
                     }
                 }
