@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework.Media;
 using System.Timers;
 using System.Diagnostics;
 using System.Collections;
+using System.Net;
 
 namespace HYtank
 {
@@ -29,11 +30,11 @@ namespace HYtank
         SpriteBatch spriteBatch;
         GraphicsDevice device;
         Texture2D backgroundTexture;
-        Texture2D waterTexture, stoneTexture, brickTexture, brick1Texture, brick2Texture,brick3Texture, tankTexture,bulletTexture, p1Texture, p2Texture, p3Texture, p4Texture, p5Texture,coinsTexture,lifepackTexture;
+        Texture2D waterTexture, stoneTexture, brickTexture, brick1Texture, brick2Texture, brick3Texture, tankTexture, bulletTexture, p1Texture, p2Texture, p3Texture, p4Texture, p5Texture, coinsTexture, lifepackTexture;
         int screenWidth;
         int screenHeight;
         int rowsGrid = 20;
-        public static int columnsGrid = 20;
+        public static int columnsGrid;
         public static int gridSize = 660;//600
         public static int gridOriginx = 6;
         public static int gridOriginy = 6;
@@ -46,34 +47,39 @@ namespace HYtank
         public static LinkedList<Bullet> bullets = new LinkedList<Bullet>();
 
         int bulletCount; //used to fire more
-        int allowFireCount=0;//used to control gaps between bursts
+        int allowFireCount = 0;//used to control gaps between bursts
 
-        SpriteFont title,body,celltext;
+        SpriteFont title, body, celltext;
 
-        GameSocket gs = new GameSocket();
-        AI ai = new AI(columnsGrid,columnsGrid);
+        GameSocket gs;
 
-        
-        PlayerInfo p0 = new PlayerInfo(-1, -1), p1 = new PlayerInfo(-1, -1), p2 = new PlayerInfo(-1, -1), p3 = new PlayerInfo(-1, -1), p4 = new PlayerInfo(-1, -1);
-        
-        Vector2 tankCentre,bulletCentre,playerCentre, coinsCentre, lifepackCentre;
+
+        PlayerInfo p0, p1, p2, p3, p4;
+
+        Vector2 tankCentre, bulletCentre, playerCentre, coinsCentre, lifepackCentre;
         float tankScale, bulletScale, playerScale, coinsScale, lifepackScale;
-       
+
         float angle;
 
         //Changing the timer should also change the timePerStep value to calculate correctly the time to coin piles
-        int timePerStep=1300;
+        int timePerStep = 1300;
         //Timer timer = new Timer(1003);//original
         Timer timer = new Timer(1300);//testing
         Timer bulletTimer = new Timer(2);//testing
         String nextCommand = "";
 
-        Cell[,] myDistances=new Cell[columnsGrid, columnsGrid];// has the format [y,x];
-        HashSet<char> barriers= new HashSet<char>{'w','b','s','1','2','3'};// add 't' here if tanks need to be considered as obstacles
+        HashSet<char> barriers = new HashSet<char> { 'w', 'b', 's', '1', '2', '3' };// add 't' here if tanks need to be considered as obstacles
         GameTime gt;
 
-        public Game1()
+        public Game1(int size,IPAddress serverIP, int serverPort, IPAddress clientIP, int clientPort)
         {
+            columnsGrid = rowsGrid = size;
+            p0 = new PlayerInfo(-1, -1);
+            p1 = new PlayerInfo(-1, -1);
+            p2 = new PlayerInfo(-1, -1);
+            p3 = new PlayerInfo(-1, -1);
+            p4 = new PlayerInfo(-1, -1);
+            gs = new GameSocket(serverIP, serverPort, clientIP, clientPort);
             game = this;
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
@@ -93,10 +99,10 @@ namespace HYtank
                 }
             }
 
-            
+
 
             gs.setGrid(arena, p0, p1, p2, p3, p4, gridSize, columnsGrid);
-            
+
 
             tankCentre = new Vector2(49, 49);//origin needs to be defined with respect to the original image
             tankScale = cellWidth * 1f / 100;
@@ -105,11 +111,11 @@ namespace HYtank
             playerCentre = new Vector2(50, 50);//origin needs to be defined with respect to the original image
             coinsCentre = new Vector2(50, 50);
             lifepackCentre = new Vector2(50, 50);
-            coinsScale = lifepackScale = cellWidth * 1f / 100; 
+            coinsScale = lifepackScale = cellWidth * 1f / 100;
 
-            timer.Elapsed+=new ElapsedEventHandler(timer_Elapsed);
+            timer.Elapsed += new ElapsedEventHandler(timer_Elapsed);
             bulletTimer.Elapsed += new ElapsedEventHandler(bulletTimer_Elapsed);
-            
+
         }
 
 
@@ -165,11 +171,8 @@ namespace HYtank
             gs.connectToServer();
             gs.joinGame();
 
-            //test
-            GameTime temptime = new GameTime();
-            Console.WriteLine(temptime.TotalGameTime);
             gs.initialize();
-            Console.WriteLine(temptime.TotalGameTime);
+
             timer.Start();
 
 
@@ -200,7 +203,6 @@ namespace HYtank
 
             gs.update();
 
-            ai.nextMove(arena);
 
 
             //uncomment the following to allow keyboard handling of the tank
@@ -235,7 +237,8 @@ namespace HYtank
                 bulletCount = 0;
                 bulletTimer.Start();
             }
-            */
+            setNextMove();//test
+             */
             //keyboar controlling ends here
 
             base.Update(gameTime);
@@ -260,11 +263,16 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y < ourPlayer.coordinates.Y /*&& (players[i].direction==2 || players[i].direction == 0)*/)
+                        if (players[i] == ourPlayer)
+                        {
+                            continue;
+                        }
+                        Vector2 nextCell = nextCellAssumption(players[i]);
+                        if ((players[i].health > 0 && nextCell.X == ourPlayer.coordinates.X && nextCell.Y < ourPlayer.coordinates.Y) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y == ourPlayer.coordinates.Y - 1))
                         {
                             //here, it is checked whether any stone lies in between
                             stones = false;
-                            for (int j = players[i].coordinates.Y; j < ourPlayer.coordinates.Y; j++)
+                            for (int j = (int)nextCell.Y; j < ourPlayer.coordinates.Y; j++)
                             {
                                 if (arena[j,ourPlayer.coordinates.X] == 's')
                                 {
@@ -285,11 +293,16 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X > ourPlayer.coordinates.X /*&& (players[i].direction == 3 || players[i].direction == 1)*/)
+                        if (players[i] == ourPlayer)
+                        {
+                            continue;
+                        }
+                        Vector2 nextCell = nextCellAssumption(players[i]);
+                        if ((players[i].health > 0 && nextCell.Y == ourPlayer.coordinates.Y && nextCell.X > ourPlayer.coordinates.X) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X + 1 && players[i].coordinates.Y == ourPlayer.coordinates.Y))
                         {
                             //here, it is checked whether any stone lies in between
                             stones = false;
-                            for (int j = ourPlayer.coordinates.X; j < players[i].coordinates.X; j++)
+                            for (int j = ourPlayer.coordinates.X; j <= (int)nextCell.X; j++)
                             {
                                 if (arena[ourPlayer.coordinates.Y, j] == 's')
                                 {
@@ -310,11 +323,16 @@ namespace HYtank
                 {
                     for (int i = 0; i < 5; i++)
                     {
-                        if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y > ourPlayer.coordinates.Y /*&& (players[i].direction == 0 || players[i].direction == 2)*/)
+                        if (players[i] == ourPlayer)
+                        {
+                            continue;
+                        }
+                        Vector2 nextCell = nextCellAssumption(players[i]);
+                        if ((players[i].health > 0 && nextCell.X == ourPlayer.coordinates.X && nextCell.Y > ourPlayer.coordinates.Y) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y == ourPlayer.coordinates.Y + 1))
                         {
                             //here, it is checked whether any stone lies in between
                             stones = false;
-                            for (int j = ourPlayer.coordinates.Y; j <players[i].coordinates.Y ; j++)
+                            for (int j = ourPlayer.coordinates.Y; j <= (int)nextCell.Y; j++)
                             {
                                 if (arena[j, ourPlayer.coordinates.X] == 's')
                                 {
@@ -334,12 +352,17 @@ namespace HYtank
                 if (ourPlayer.direction == 3)
                 {
                     for (int i = 0; i < 5; i++)
-                    {                        
-                        if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X < ourPlayer.coordinates.X /*&& (players[i].direction == 1 || players[i].direction == 3)*/)
+                    {
+                        if (players[i] == ourPlayer)
+                        {
+                            continue;
+                        }
+                        Vector2 nextCell = nextCellAssumption(players[i]);
+                        if ((players[i].health > 0 && nextCell.Y == ourPlayer.coordinates.Y && nextCell.X < ourPlayer.coordinates.X) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X - 1 && players[i].coordinates.Y == ourPlayer.coordinates.Y))
                         {
                             //here, it is checked whether any stone lies in between
                             stones = false;
-                            for (int j = players[i].coordinates.X; j < ourPlayer.coordinates.X; j++)
+                            for (int j = (int)nextCell.X; j < ourPlayer.coordinates.X; j++)
                             {
                                 if (arena[ourPlayer.coordinates.Y, j] == 's')
                                 {
@@ -379,11 +402,11 @@ namespace HYtank
         private void bulletTimer_Elapsed(Object sender, ElapsedEventArgs arg)
         {
             
-            gs.command("SHOOT#");//test
+            gs.command("SHOOT#");
 
             bulletCount++;
 
-            if (bulletCount == 11)
+            if (bulletCount == 1)
             {
                 bulletTimer.Stop();
                 bulletCount = 0;
@@ -391,19 +414,16 @@ namespace HYtank
         }
 
         public void setNextMove()
-        {
-           
-            
-            
+        {       
             CoinsInfo nextTarget = null;
             LifepackInfo nextLife = null;
 
             HashSet<CoinsInfo> reachableCoins = new HashSet<CoinsInfo>();//this will have reachable coins
 
             //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
-            foreach (PlayerInfo player in players)
+            for (int i = 0; i < noPlayers; i++ )
             {
-                findDistances(player.coordinates.X, player.coordinates.Y, player.direction, player.distanceMatrix);
+                findDistances(players[i].coordinates.X, players[i].coordinates.Y, players[i].direction, players[i].distanceMatrix);
             }
             //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
 
@@ -578,7 +598,7 @@ namespace HYtank
             DrawGrid();                     //draw the map according to the map size
             fillGrid();                     //update the objects on the map
             DrawScoreboard();               //draw the scoreboard considering no of players
-            spriteBatch.End();
+             spriteBatch.End();
             base.Draw(gameTime);
         }
         private void DrawBackground()
@@ -982,6 +1002,74 @@ namespace HYtank
                 }
 
             }
+        }
+
+        private Vector2 nextCellAssumption(PlayerInfo tank)
+        {
+            Vector2 nextCellCoordinates = new Vector2();
+            switch (tank.direction)
+            {
+                case 0:
+                    {
+                        if (tank.coordinates.Y > 0)
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X;
+                            nextCellCoordinates.Y = tank.coordinates.Y-1;
+                        }
+                        else
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X;
+                            nextCellCoordinates.Y = tank.coordinates.Y ;
+                        }
+                        break;
+                    }
+                case 1:
+                    {
+                        if (tank.coordinates.X < columnsGrid)
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X + 1;
+                            nextCellCoordinates.Y = tank.coordinates.Y ;
+                        }
+                        else
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X;
+                            nextCellCoordinates.Y = tank.coordinates.Y;
+                        }
+                        break;
+                    }
+                case 2:
+                    {
+                        if (tank.coordinates.Y < columnsGrid)
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X;
+                            nextCellCoordinates.Y = tank.coordinates.Y + 1;
+                        }
+                        else
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X;
+                            nextCellCoordinates.Y = tank.coordinates.Y;
+                        }
+                        break;
+                    }
+                case 3:
+                    {
+                        if (tank.coordinates.X > 0)
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X - 1;
+                            nextCellCoordinates.Y = tank.coordinates.Y;
+                        }
+                        else
+                        {
+                            nextCellCoordinates.X = tank.coordinates.X;
+                            nextCellCoordinates.Y = tank.coordinates.Y;
+                        }
+                        break;
+                    }
+
+            }
+            return nextCellCoordinates;
+
+
         }
 
     }

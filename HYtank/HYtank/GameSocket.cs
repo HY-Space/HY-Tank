@@ -19,18 +19,23 @@ namespace HYtank
         NetworkStream stream1;
         String responseData = "";
         bool playersFull = false, gameAlreadyStarted = false, initialized = false, positioned = false;
-        IPAddress ipc = new IPAddress(new byte[] { 127, 0, 0, 1 });
-        IPAddress ips = new IPAddress(new byte[] { 127, 0, 0, 1 });
+        IPAddress ipc;
+        IPAddress ips;
         //IPAddress ipc = new IPAddress(new byte[] { 101, 2, 179, 32 });
         //IPAddress ips = new IPAddress(new byte[] { 10,224,58,225});
         Socket s1 = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         TcpListener serverSocket;
-        
-        PlayerInfo p0, p1, p2, p3, p4;
-        int gridSize, columnsGrid;
 
-        public GameSocket()
+        PlayerInfo p0, p1, p2, p3, p4;
+        int gridSize, columnsGrid,serverPort,clientPort;
+
+        public GameSocket(IPAddress serverIP, int serverPort, IPAddress clientIP, int clientPort)
         {
+            ips = serverIP;
+            this.serverPort = serverPort;
+            ipc = clientIP;
+            this.clientPort = clientPort;
+
             serverSocket = new TcpListener(ipc, 7000);
             serverSocket.Start();
         }
@@ -146,7 +151,7 @@ namespace HYtank
                     gameAlreadyStarted = true;
                     //if join successfully play, else exit and return
                 }
-                
+
 
                 if (initialized && positioned)
                     break;
@@ -244,7 +249,7 @@ namespace HYtank
                             default:
                                 {
                                     break;
-                                }                               
+                                }
 
                         }
                         if (p != null)
@@ -255,13 +260,13 @@ namespace HYtank
                             {
                                 Game1.tankGrid[p.coordinates.Y, p.coordinates.X] = -1;
                             }
-                            p.coordinates.X=Int32.Parse(playerInfo[1]);
-                            p.coordinates.Y=Int32.Parse(playerInfo[2]);
+                            p.coordinates.X = Int32.Parse(playerInfo[1]);
+                            p.coordinates.Y = Int32.Parse(playerInfo[2]);
 
-                            
-                            
 
-                            
+
+
+
                             p.position.X = Game1.gridOriginx + (p.coordinates.X + .5f) * gridSize / columnsGrid;
                             p.position.Y = Game1.gridOriginy + (p.coordinates.Y + .5f) * gridSize / columnsGrid;
                             p.direction = Int32.Parse(playerInfo[3]);
@@ -289,10 +294,10 @@ namespace HYtank
                     }
 
                     brickInfo = info[info.Length - 1].Split(',', ';', '#');
-                                
-                    for (int j = 0; j+2 < brickInfo.Length;j+=3 )
+
+                    for (int j = 0; j + 2 < brickInfo.Length; j += 3)
                     {
-                        if (brickInfo[j + 2] =="1")
+                        if (brickInfo[j + 2] == "1")
                             grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '1';//rows of the array corresponds to the y axis. so had to change the order
                         else if (brickInfo[j + 2] == "2")
                             grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '2';
@@ -312,6 +317,7 @@ namespace HYtank
                             {
                                 Game1.arena[Game1.coinsList.ElementAt(i).y, Game1.coinsList.ElementAt(i).x] = '\0';
                                 Game1.coinsList.RemoveAt(i);
+                                i--;// as a coin pile is removed
                                 break;
                             }
                         }
@@ -321,7 +327,7 @@ namespace HYtank
                 }
                 else if (responseData.Split(':')[0] == "C")
                 {
-                    info = responseData.Split(':', '#',',');
+                    info = responseData.Split(':', '#', ',');
                     grid[Int32.Parse(info[2]), Int32.Parse(info[1])] = 'c';
                     double leaveat = Double.Parse(info[3]) + Game1.time;
                     Game1.coinsList.Add(new CoinsInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, Int32.Parse(info[4]), leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
@@ -329,10 +335,10 @@ namespace HYtank
                 }
                 else if (responseData.Split(':')[0] == "L")
                 {
-                    info = responseData.Split(':', '#',',');
+                    info = responseData.Split(':', '#', ',');
                     grid[Int32.Parse(info[2]), Int32.Parse(info[1])] = 'l';
                     double leaveat = Double.Parse(info[3]) + Game1.time;
-                    Game1.lifeList.Add(new LifepackInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, leaveat,Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
+                    Game1.lifeList.Add(new LifepackInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
                 }
                 else if (responseData == "TOO_QUICK#")
                 {
