@@ -255,16 +255,29 @@ namespace HYtank
             else
             {
                 //These check for inline oponents to fire
-
+                Boolean stones;// flag shows there are stones between our tank and target
                 if (ourPlayer.direction == 0)
                 {
                     for (int i = 0; i < 5; i++)
                     {
                         if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y < ourPlayer.coordinates.Y /*&& (players[i].direction==2 || players[i].direction == 0)*/)
                         {
-                            bulletTimer.Start();
-                            allowFireCount = 0;
-                            return;
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = players[i].coordinates.Y; j < ourPlayer.coordinates.Y; j++)
+                            {
+                                if (arena[j,ourPlayer.coordinates.X] == 's')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                bulletTimer.Start();
+                                allowFireCount = 0;
+                                return;
+                            }
                         }
                     }
                 }
@@ -274,9 +287,22 @@ namespace HYtank
                     {
                         if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X > ourPlayer.coordinates.X /*&& (players[i].direction == 3 || players[i].direction == 1)*/)
                         {
-                            bulletTimer.Start();
-                            allowFireCount = 0;
-                            return;
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = ourPlayer.coordinates.X; j < players[i].coordinates.X; j++)
+                            {
+                                if (arena[ourPlayer.coordinates.Y, j] == 's')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                bulletTimer.Start();
+                                allowFireCount = 0;
+                                return;
+                            }
                         }
                     }
                 }
@@ -286,21 +312,47 @@ namespace HYtank
                     {
                         if (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y > ourPlayer.coordinates.Y /*&& (players[i].direction == 0 || players[i].direction == 2)*/)
                         {
-                            bulletTimer.Start();
-                            allowFireCount = 0;
-                            return;
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = ourPlayer.coordinates.Y; j <players[i].coordinates.Y ; j++)
+                            {
+                                if (arena[j, ourPlayer.coordinates.X] == 's')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                bulletTimer.Start();
+                                allowFireCount = 0;
+                                return;
+                            }
                         }
                     }
                 }
                 if (ourPlayer.direction == 3)
                 {
                     for (int i = 0; i < 5; i++)
-                    {
+                    {                        
                         if (players[i].health > 0 && players[i].coordinates.Y == ourPlayer.coordinates.Y && players[i].coordinates.X < ourPlayer.coordinates.X /*&& (players[i].direction == 1 || players[i].direction == 3)*/)
                         {
-                            bulletTimer.Start();
-                            allowFireCount = 0;
-                            return;
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = players[i].coordinates.X; j < ourPlayer.coordinates.X; j++)
+                            {
+                                if (arena[ourPlayer.coordinates.Y, j] == 's')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                bulletTimer.Start();
+                                allowFireCount = 0;
+                                return;
+                            }
                         }
                     }
                 }
@@ -331,7 +383,7 @@ namespace HYtank
 
             bulletCount++;
 
-            if (bulletCount == 4)
+            if (bulletCount == 11)
             {
                 bulletTimer.Stop();
                 bulletCount = 0;
@@ -611,22 +663,22 @@ namespace HYtank
                 }
                 else
                 {
-                    bool removed = false;
-                    for (int j = 0; j < noPlayers; j++)
-                    {
-                        if (players[j].position == coinsList.ElementAt(i).position)
-                        {
-                            arena[coinsList.ElementAt(i).y, coinsList.ElementAt(i).x] = '\0';
-                            coinsList.RemoveAt(i);
-                            removed = true;
-                            break;
-                        }
-                    }
-                    if (!removed)
-                    {
-                        spriteBatch.Draw(coinsTexture, coinsList.ElementAt(i).position, null, Color.White, 0, coinsCentre, coinsScale, SpriteEffects.None, 1);
-                        spriteBatch.DrawString(celltext, "$" + coinsList.ElementAt(i).value + "\n" + ((int)Math.Round(coinsList.ElementAt(i).leaveat - gt.TotalGameTime.TotalMilliseconds))/*coinsList.ElementAt(i).lifetime*/, getTextLocationCenter(coinsList.ElementAt(i).x, coinsList.ElementAt(i).y, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime), Color.Black);
-                    }
+                    //bool removed = false;
+                    //for (int j = 0; j < noPlayers; j++)
+                    //{
+                    //    if (players[j].position == coinsList.ElementAt(i).position)
+                    //    {
+                    //        arena[coinsList.ElementAt(i).y, coinsList.ElementAt(i).x] = '\0';
+                    //        coinsList.RemoveAt(i);
+                    //        removed = true;
+                    //        break;
+                    //    }
+                    //}
+                    //if (!removed)
+                    //{
+                    spriteBatch.Draw(coinsTexture, coinsList.ElementAt(i).position, null, Color.White, 0, coinsCentre, coinsScale, SpriteEffects.None, 1);
+                    spriteBatch.DrawString(celltext, "$" + coinsList.ElementAt(i).value + "\n" + ((int)Math.Round(coinsList.ElementAt(i).leaveat - gt.TotalGameTime.TotalMilliseconds))/*coinsList.ElementAt(i).lifetime*/, getTextLocationCenter(coinsList.ElementAt(i).x, coinsList.ElementAt(i).y, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime), Color.Black);
+                    //}
                 }
             }
 

@@ -302,6 +302,21 @@ namespace HYtank
                             grid[Int32.Parse(brickInfo[j + 1]), Int32.Parse(brickInfo[j])] = '\0';
                     }
 
+
+                    //removes the collected coins
+                    for (int i = 0; i < Game1.coinsList.Count; i++)
+                    {
+                        for (int j = 0; j < Game1.noPlayers; j++)
+                        {
+                            if (Game1.players[j].position == Game1.coinsList.ElementAt(i).position && Game1.players[j].health!=0)
+                            {
+                                Game1.arena[Game1.coinsList.ElementAt(i).y, Game1.coinsList.ElementAt(i).x] = '\0';
+                                Game1.coinsList.RemoveAt(i);
+                                break;
+                            }
+                        }
+                    }
+
                     Game1.game.setNextMove();
                 }
                 else if (responseData.Split(':')[0] == "C")
@@ -322,6 +337,10 @@ namespace HYtank
                 else if (responseData == "TOO_QUICK#")
                 {
                     //command reached before 1s after the previous
+                }
+                else if (responseData == "GAME_HAS_FINISHED#")
+                {
+                    //command reached after the game is finished
                 }
             }
         }
