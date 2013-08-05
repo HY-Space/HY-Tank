@@ -21,7 +21,7 @@ namespace HYtank
 
     public class Game1 : Microsoft.Xna.Framework.Game
     {
-        public static char[,] arena;
+        public static char[,] arena;//this matrix contains the layout of the grid.
         public static int[,] tankGrid;//this contains the player no (0 to 4) at the occupied cell else -1
         public static Game1 game;
         public static PlayerInfo ourPlayer;
@@ -35,11 +35,10 @@ namespace HYtank
         int screenHeight;
         int rowsGrid = 20;
         public static int columnsGrid;
-        public static int gridSize = 660;//600
+        public static int gridSizeInPixels = 660;//600
         public static int gridOriginx = 6;
         public static int gridOriginy = 6;
         int cellWidth, cellHeight;
-        double lastCmdAt = 0;
         public static int noPlayers = 0;
         public static double time;
         public static List<CoinsInfo> coinsList = new List<CoinsInfo>();
@@ -59,13 +58,12 @@ namespace HYtank
         Vector2 tankCentre, bulletCentre, playerCentre, coinsCentre, lifepackCentre;
         float tankScale, bulletScale, playerScale, coinsScale, lifepackScale;
 
-        float angle;
 
         //Changing the timer should also change the timePerStep value to calculate correctly the time to coin piles
         int timePerStep = 1300;
         //Timer timer = new Timer(1003);//original
         Timer timer = new Timer(1300);//testing
-        Timer bulletTimer = new Timer(2);//testing
+        Timer bulletTimer = new Timer(1);//testing
         String nextCommand = "";
 
         HashSet<char> barriers = new HashSet<char> { 'w', 'b', 's', '1', '2', '3' };// add 't' here if tanks need to be considered as obstacles
@@ -85,8 +83,8 @@ namespace HYtank
             Content.RootDirectory = "Content";
             arena = new char[columnsGrid, columnsGrid];
             tankGrid = new int[columnsGrid, columnsGrid];
-            cellWidth = gridSize / columnsGrid;
-            cellHeight = gridSize / rowsGrid;
+            cellWidth = gridSizeInPixels / columnsGrid;
+            cellHeight = gridSizeInPixels / rowsGrid;
             //arena[0, 1] = 's'; arena[9, 0] = 's'; arena[9, 1] = 's'; arena[9, 2] = 's'; arena[8, 1] = 's'; arena[8, 0] = 's'; arena[5, 0] = 'w'; arena[5, 1] = 'w'; arena[4, 0] = 'w'; arena[4, 1] = 'w'; arena[6, 9] = 'b'; arena[6, 8] = 'b'; arena[5, 9] = 'b'; arena[5, 8] = 'b';
 
             players[0] = p0; players[1] = p1; players[2] = p2; players[3] = p3; players[4] = p4;
@@ -101,7 +99,7 @@ namespace HYtank
 
 
 
-            gs.setGrid(arena, p0, p1, p2, p3, p4, gridSize, columnsGrid);
+            gs.setGrid(arena, p0, p1, p2, p3, p4, gridSizeInPixels, columnsGrid);
 
 
             tankCentre = new Vector2(49, 49);//origin needs to be defined with respect to the original image
@@ -216,7 +214,6 @@ namespace HYtank
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 this.Exit();
 
-            // TODO: Add your update logic here
 
             gs.update();
 
@@ -254,7 +251,6 @@ namespace HYtank
                 bulletCount = 0;
                 bulletTimer.Start();
             }
-            setNextMove();//test
              */
             //keyboar controlling ends here
 
@@ -412,7 +408,7 @@ namespace HYtank
                 nextCommand = "";
             }
 
-            setNextMove();
+            //setNextMove();
                
         }
 
@@ -423,7 +419,7 @@ namespace HYtank
 
             bulletCount++;
 
-            if (bulletCount == 1)
+            if (bulletCount == 3)
             {
                 bulletTimer.Stop();
                 bulletCount = 0;
@@ -438,21 +434,13 @@ namespace HYtank
             HashSet<CoinsInfo> reachableCoins = new HashSet<CoinsInfo>();//this will have reachable coins
 
             //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
+
+            //calculate distances for each tank
             for (int i = 0; i < noPlayers; i++ )
             {
                 findDistances(players[i].coordinates.X, players[i].coordinates.Y, players[i].direction, players[i].distanceMatrix);
             }
             //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
-
-
-
-            //foreach (CoinsInfo coin in coinsList)
-            //{
-            //    if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || ourPlayer.distanceMatrix[coin.y, coin.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min) && ourPlayer.distanceMatrix[coin.y, coin.x].min * timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
-            //    {
-            //        nextTarget = coin;
-            //    }
-            //}
 
             foreach (CoinsInfo coin in coinsList)
             {
@@ -615,7 +603,7 @@ namespace HYtank
             DrawGrid();                     //draw the map according to the map size
             fillGrid();                     //update the objects on the map
             DrawScoreboard();               //draw the scoreboard considering no of players
-             spriteBatch.End();
+            spriteBatch.End();
             base.Draw(gameTime);
         }
         private void DrawBackground()
@@ -627,16 +615,16 @@ namespace HYtank
         {
             Texture2D blank = new Texture2D(GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
             blank.SetData(new[] { Color.White });
-            int rowGap = gridSize / rowsGrid;
-            int columnGap = gridSize / columnsGrid;
+            int rowGap = gridSizeInPixels / rowsGrid;
+            int columnGap = gridSizeInPixels / columnsGrid;
             Color lineColour = new Color(210, 200, 180);
             for (int i = 1; i < rowsGrid; i++)
             {
-                spriteBatch.Draw(blank, new Vector2(gridOriginx, gridOriginy + (gridSize * i) / rowsGrid), null, lineColour, 0, Vector2.Zero, new Vector2(gridSize, 1), SpriteEffects.None, 0);
+                spriteBatch.Draw(blank, new Vector2(gridOriginx, gridOriginy + (gridSizeInPixels * i) / rowsGrid), null, lineColour, 0, Vector2.Zero, new Vector2(gridSizeInPixels, 1), SpriteEffects.None, 0);
             }
             for (int i = 1; i < columnsGrid; i++)
             {
-                spriteBatch.Draw(blank, new Vector2(gridOriginx + (gridSize * i) / columnsGrid, gridOriginy), null, lineColour, 0, Vector2.Zero, new Vector2(1, gridSize), SpriteEffects.None, 0);
+                spriteBatch.Draw(blank, new Vector2(gridOriginx + (gridSizeInPixels * i) / columnsGrid, gridOriginy), null, lineColour, 0, Vector2.Zero, new Vector2(1, gridSizeInPixels), SpriteEffects.None, 0);
             }
         }
         private void fillGrid()//s-stone, b-brick, w-water
@@ -650,39 +638,39 @@ namespace HYtank
                     {
                         case 's':
                             {
-                                screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
+                                screenRectangle = new Rectangle(gridOriginx + j * gridSizeInPixels / columnsGrid, gridOriginy + i * gridSizeInPixels / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(stoneTexture, screenRectangle, Color.White);
                                 break;
                             }
                         case 'w':
                             {
-                                screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
+                                screenRectangle = new Rectangle(gridOriginx + j * gridSizeInPixels / columnsGrid, gridOriginy + i * gridSizeInPixels / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(waterTexture, screenRectangle, Color.White);
                                 break;
                             }
                         case 'b':
                             {
-                                screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
+                                screenRectangle = new Rectangle(gridOriginx + j * gridSizeInPixels / columnsGrid, gridOriginy + i * gridSizeInPixels / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(brickTexture, screenRectangle, Color.White);
                                 break;
                             }
                         case '1':
                             {
-                                screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
+                                screenRectangle = new Rectangle(gridOriginx + j * gridSizeInPixels / columnsGrid, gridOriginy + i * gridSizeInPixels / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(brick1Texture, screenRectangle, Color.White);
                                 spriteBatch.DrawString(celltext, "75%", getTextLocationCenter(j,i,"75%"), Color.Black);
                                 break;
                             }
                         case '2':
                             {
-                                screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
+                                screenRectangle = new Rectangle(gridOriginx + j * gridSizeInPixels / columnsGrid, gridOriginy + i * gridSizeInPixels / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(brick2Texture, screenRectangle, Color.White);
                                 spriteBatch.DrawString(celltext, "50%", getTextLocationCenter(j, i, "50%"), Color.Black);
                                 break;
                             }
                         case '3':
                             {
-                                screenRectangle = new Rectangle(gridOriginx + j * gridSize / columnsGrid, gridOriginy + i * gridSize / rowsGrid, cellWidth, cellHeight);
+                                screenRectangle = new Rectangle(gridOriginx + j * gridSizeInPixels / columnsGrid, gridOriginy + i * gridSizeInPixels / rowsGrid, cellWidth, cellHeight);
                                 spriteBatch.Draw(brick3Texture, screenRectangle, Color.White);
                                 spriteBatch.DrawString(celltext, "25%", getTextLocationCenter(j, i, "25%"), Color.Black);
                                 break;
@@ -691,6 +679,8 @@ namespace HYtank
                 }
             }
 
+
+            //Drawing coin piles
             for (int i = 0; i < coinsList.Count; i++)
             {
                 if (time > coinsList.ElementAt(i).leaveat)
@@ -700,25 +690,13 @@ namespace HYtank
                 }
                 else
                 {
-                    //bool removed = false;
-                    //for (int j = 0; j < noPlayers; j++)
-                    //{
-                    //    if (players[j].position == coinsList.ElementAt(i).position)
-                    //    {
-                    //        arena[coinsList.ElementAt(i).y, coinsList.ElementAt(i).x] = '\0';
-                    //        coinsList.RemoveAt(i);
-                    //        removed = true;
-                    //        break;
-                    //    }
-                    //}
-                    //if (!removed)
-                    //{
                     spriteBatch.Draw(coinsTexture, coinsList.ElementAt(i).position, null, Color.White, 0, coinsCentre, coinsScale, SpriteEffects.None, 1);
                     spriteBatch.DrawString(celltext, "$" + coinsList.ElementAt(i).value + "\n" + ((int)Math.Round(coinsList.ElementAt(i).leaveat - gt.TotalGameTime.TotalMilliseconds))/*coinsList.ElementAt(i).lifetime*/, getTextLocationCenter(coinsList.ElementAt(i).x, coinsList.ElementAt(i).y, "$" + coinsList.ElementAt(i).value + "\n" + coinsList.ElementAt(i).lifetime), Color.Black);
-                    //}
+                   
                 }
             }
 
+            //drawing life packs
             for (int i = 0; i < lifeList.Count; i++)
             {
                 if (time > lifeList.ElementAt(i).leaveat)
@@ -747,11 +725,14 @@ namespace HYtank
                 }
             }
             
+
+            //draw bullets
             foreach (Bullet bullet in bullets)
             {
                 spriteBatch.Draw(bulletTexture, bullet.position, null, Color.White, bullet.direction * 1.57f, bulletCentre, bulletScale, SpriteEffects.None, 1);
             }
 
+            //draw players
             if (p0.position.X != -1 && p0.health > 0 && p0 == ourPlayer)
             {
                 spriteBatch.Draw(tankTexture, p0.position, null, Color.DeepSkyBlue, p0.direction * 1.57f, tankCentre, tankScale*1.2f, SpriteEffects.FlipVertically, 1);
@@ -803,7 +784,7 @@ namespace HYtank
             int columnGap = 80;
             int scoreorgy = 150;
             int rowlength = 320;
-            int scoreorgx = (gridSize + gridOriginx * 2) + ((screenWidth - gridSize - gridOriginx * 2 - rowlength)/2);
+            int scoreorgx = (gridSizeInPixels + gridOriginx * 2) + ((screenWidth - gridSizeInPixels - gridOriginx * 2 - rowlength)/2);
             playerScale = (rowGap-5) * 1f / 100; 
             Color lineColour = new Color(210, 200, 180);
             spriteBatch.Draw(blank, new Vector2(scoreorgx, scoreorgy), null, lineColour, 0, Vector2.Zero, new Vector2(rowlength, 1), SpriteEffects.None, 0);
@@ -878,7 +859,7 @@ namespace HYtank
 
         private Vector2 getTextLocationCenter(int x, int y, string text)//align center
         {
-            return new Vector2(Game1.gridOriginx + (x + .5f) * gridSize / columnsGrid - celltext.MeasureString(text).X / 2, Game1.gridOriginy + (y + .5f) * gridSize / columnsGrid - celltext.MeasureString(text).Y / 2);
+            return new Vector2(Game1.gridOriginx + (x + .5f) * gridSizeInPixels / columnsGrid - celltext.MeasureString(text).X / 2, Game1.gridOriginy + (y + .5f) * gridSizeInPixels / columnsGrid - celltext.MeasureString(text).Y / 2);
         }
 
         private void findDistances(int sourceX, int sourceY, int sourceOrientation, Cell[,] resultMatrix)
@@ -1028,7 +1009,7 @@ namespace HYtank
             {
                 case 0:
                     {
-                        if (tank.coordinates.Y > 0)
+                        if (tank.coordinates.Y > 1 && !barriers.Contains(arena[tank.coordinates.Y-1,tank.coordinates.X]))
                         {
                             nextCellCoordinates.X = tank.coordinates.X;
                             nextCellCoordinates.Y = tank.coordinates.Y-1;
@@ -1042,7 +1023,7 @@ namespace HYtank
                     }
                 case 1:
                     {
-                        if (tank.coordinates.X < columnsGrid)
+                        if (tank.coordinates.X < columnsGrid-1 && !barriers.Contains(arena[tank.coordinates.Y, tank.coordinates.X+1]))
                         {
                             nextCellCoordinates.X = tank.coordinates.X + 1;
                             nextCellCoordinates.Y = tank.coordinates.Y ;
@@ -1056,7 +1037,7 @@ namespace HYtank
                     }
                 case 2:
                     {
-                        if (tank.coordinates.Y < columnsGrid)
+                        if (tank.coordinates.Y < columnsGrid-1 && !barriers.Contains(arena[tank.coordinates.Y + 1, tank.coordinates.X]))
                         {
                             nextCellCoordinates.X = tank.coordinates.X;
                             nextCellCoordinates.Y = tank.coordinates.Y + 1;
@@ -1070,7 +1051,7 @@ namespace HYtank
                     }
                 case 3:
                     {
-                        if (tank.coordinates.X > 0)
+                        if (tank.coordinates.X > 1 && !barriers.Contains(arena[tank.coordinates.Y, tank.coordinates.X - 1]))
                         {
                             nextCellCoordinates.X = tank.coordinates.X - 1;
                             nextCellCoordinates.Y = tank.coordinates.Y;

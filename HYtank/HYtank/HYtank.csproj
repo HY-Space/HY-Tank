@@ -108,9 +108,6 @@
     <Reference Include="System.Net">
       <Private>False</Private>
     </Reference>
-    <Reference Include="TomShane.Neoforce.Controls">
-      <HintPath>..\Neoforce Binary\TomShane.Neoforce.Controls.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AI.cs" />

@@ -15,21 +15,23 @@ namespace HYtank
     {
         char[,] grid;
 
-        Byte[] data;
+        Byte[] data;// array to receive socket data
         NetworkStream stream;
         NetworkStream stream1;
         String responseData = "";
         bool playersFull = false, gameAlreadyStarted = false, initialized = false, positioned = false;
-        IPAddress ipc;
-        IPAddress ips;
+        IPAddress ipc;//client IP address
+        IPAddress ips;//server IP address
         //IPAddress ipc = new IPAddress(new byte[] { 101, 2, 179, 32 });
         //IPAddress ips = new IPAddress(new byte[] { 10,224,58,225});
-        Socket s1 = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         TcpListener clientSocket;
 
-        PlayerInfo p0, p1, p2, p3, p4;
-        int gridSize, columnsGrid,serverPort,clientPort;
+        PlayerInfo p0, p1, p2, p3, p4;//variables to store players
 
+        int gridSizeInPixels, columnsGrid,serverPort,clientPort;
+
+        //GameSocket Constructor
         public GameSocket(IPAddress serverIP, int serverPort, IPAddress clientIP, int clientPort)
         {
             ips = serverIP;
@@ -37,22 +39,24 @@ namespace HYtank
             ipc = clientIP;
             this.clientPort = clientPort;
 
+            //Starting the socket listener
             clientSocket = new TcpListener(ipc, 7000);
             clientSocket.Start();
         }
+
+        //method to stop the socket listener
         public void stopClientSocket()
         {
             clientSocket.Stop();
         }
 
         //connect to server port to write to it to join the game
-        //if server is not available, try until it is...
 
         public void connectToServer()
         {
             try
             {
-                s1.Connect(ips, 6000);
+                serverSocket.Connect(ips, 6000);
             }
             catch (Exception ex)
             {
@@ -64,13 +68,14 @@ namespace HYtank
             }
         }
 
+        //Join the game
         public void joinGame()
-        {//Join the game
+        {
             String message = "JOIN#";
             data = System.Text.Encoding.ASCII.GetBytes(message);
-            stream = new NetworkStream(s1);
+            stream = new NetworkStream(serverSocket);
             stream.Write(data, 0, data.Length);
-            s1.Close();
+            serverSocket.Close();
         }
 
         public void setGrid(char[,] g, PlayerInfo p0, PlayerInfo p1, PlayerInfo p2, PlayerInfo p3, PlayerInfo p4, int gridSize, int columnsGrid)
@@ -81,7 +86,7 @@ namespace HYtank
             this.p2 = p2;
             this.p3 = p3;
             this.p4 = p4;
-            this.gridSize = gridSize;
+            this.gridSizeInPixels = gridSize;
             this.columnsGrid = columnsGrid;
         }
 
@@ -109,9 +114,10 @@ namespace HYtank
                 grid[Int32.Parse(xy[i + 1]), Int32.Parse(xy[i])] = 'w';//rows of the array corresponds to the y axis. so had to change the order
             }
         }
-
+        
+        //manage responses until the game starts (do only reading)
         public void initialize()
-        {//manage responses until the game starts (do only reading)
+        {
             while (true)
             {
                 try
@@ -165,12 +171,14 @@ namespace HYtank
 
 
                 if (initialized && positioned)
-                    break;
+                {
+                    break;// get out of the initializing loop
+                }
 
-                //Console.WriteLine("Hi");
             }
         }
 
+        //method to receive global updates
         public void update()
         {
             String[] info;
@@ -278,8 +286,8 @@ namespace HYtank
 
 
 
-                            p.position.X = Game1.gridOriginx + (p.coordinates.X + .5f) * gridSize / columnsGrid;
-                            p.position.Y = Game1.gridOriginy + (p.coordinates.Y + .5f) * gridSize / columnsGrid;
+                            p.position.X = Game1.gridOriginx + (p.coordinates.X + .5f) * gridSizeInPixels / columnsGrid;
+                            p.position.Y = Game1.gridOriginy + (p.coordinates.Y + .5f) * gridSizeInPixels / columnsGrid;
                             p.direction = Int32.Parse(playerInfo[3]);
                             p.shot = Int32.Parse(playerInfo[4]) == 0 ? false : true;
                             if (p.shot)
@@ -334,14 +342,14 @@ namespace HYtank
                         }
                     }
 
-                    Game1.game.setNextMove();
+                    Game1.game.setNextMove();//decide on the next move based on the latest info
                 }
                 else if (responseData.Split(':')[0] == "C")
                 {
                     info = responseData.Split(':', '#', ',');
                     grid[Int32.Parse(info[2]), Int32.Parse(info[1])] = 'c';
                     double leaveat = Double.Parse(info[3]) + Game1.time;
-                    Game1.coinsList.Add(new CoinsInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, Int32.Parse(info[4]), leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
+                    Game1.coinsList.Add(new CoinsInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSizeInPixels / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSizeInPixels / columnsGrid, Int32.Parse(info[4]), leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
                     Game1.game.setNextMove();
                 }
                 else if (responseData.Split(':')[0] == "L")
@@ -349,26 +357,30 @@ namespace HYtank
                     info = responseData.Split(':', '#', ',');
                     grid[Int32.Parse(info[2]), Int32.Parse(info[1])] = 'l';
                     double leaveat = Double.Parse(info[3]) + Game1.time;
-                    Game1.lifeList.Add(new LifepackInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSize / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSize / columnsGrid, leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
+                    Game1.lifeList.Add(new LifepackInfo(Game1.gridOriginx + (Int32.Parse(info[1]) + .5f) * gridSizeInPixels / columnsGrid, Game1.gridOriginy + (Int32.Parse(info[2]) + .5f) * gridSizeInPixels / columnsGrid, leaveat, Int32.Parse(info[1]), Int32.Parse(info[2]), Int32.Parse(info[3])));
+                    Game1.game.setNextMove();
                 }
                 else if (responseData == "TOO_QUICK#")
                 {
                     //command reached before 1s after the previous
                 }
-                else if (responseData == "GAME_HAS_FINISHED#")
+                else if (responseData == "GAME_HAS_FINISHED#" || responseData == "GAME_FINISHED#")
                 {
                     //command reached after the game is finished
                 }
             }
         }
+
+
+        //method to send commands to server
         public void command(String cmd)
         {
-            s1 = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             connectToServer();
             data = System.Text.Encoding.ASCII.GetBytes(cmd);
-            stream = new NetworkStream(s1);
+            stream = new NetworkStream(serverSocket);
             stream.Write(data, 0, data.Length);
-            s1.Close();
+            serverSocket.Close();
         }
 
     }

@@ -9,22 +9,25 @@ namespace HYtank
 {
     public class Bullet
     {
-
+        //the main timer which advances the bullet
         Timer timer = new Timer(250);
+
+        //current postion, direction and coordinates
         public Vector2 position;
         public Point coordinates;
         public int direction;//0-up 1-right 2-down 3-left
 
 
+        //creating and positioning of the bullet
         public Bullet(Point origin, int direction)
         {
             timer.Start();
             timer.Elapsed += new ElapsedEventHandler(timerElapsed);
             this.direction = direction;
             coordinates = origin;
-            position.X = Game1.gridOriginx + (coordinates.X + .5f) * Game1.gridSize / Game1.columnsGrid;
-            position.Y = Game1.gridOriginy + (coordinates.Y + .5f) * Game1.gridSize / Game1.columnsGrid;
-            Game1.bullets.AddLast(this);
+            position.X = Game1.gridOriginx + (coordinates.X + .5f) * Game1.gridSizeInPixels / Game1.columnsGrid;
+            position.Y = Game1.gridOriginy + (coordinates.Y + .5f) * Game1.gridSizeInPixels / Game1.columnsGrid;
+            Game1.bullets.AddLast(this);// adding the bullet to the list that has all the bullets on the map
             advance();// because we get the msg after the actual shooting occur
         }
 
@@ -74,8 +77,8 @@ namespace HYtank
                 timer.Stop();
                 timer.Dispose();
             }
-            position.X = Game1.gridOriginx + (coordinates.X + .5f) * Game1.gridSize / Game1.columnsGrid;
-            position.Y = Game1.gridOriginy + (coordinates.Y + .5f) * Game1.gridSize / Game1.columnsGrid;
+            position.X = Game1.gridOriginx + (coordinates.X + .5f) * Game1.gridSizeInPixels / Game1.columnsGrid;
+            position.Y = Game1.gridOriginy + (coordinates.Y + .5f) * Game1.gridSizeInPixels / Game1.columnsGrid;
         }
     }
 }
