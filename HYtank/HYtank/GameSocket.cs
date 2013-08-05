@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.IO;
 using Microsoft.Xna.Framework;
 using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace HYtank
 {
@@ -24,7 +25,7 @@ namespace HYtank
         //IPAddress ipc = new IPAddress(new byte[] { 101, 2, 179, 32 });
         //IPAddress ips = new IPAddress(new byte[] { 10,224,58,225});
         Socket s1 = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        TcpListener serverSocket;
+        TcpListener clientSocket;
 
         PlayerInfo p0, p1, p2, p3, p4;
         int gridSize, columnsGrid,serverPort,clientPort;
@@ -36,8 +37,12 @@ namespace HYtank
             ipc = clientIP;
             this.clientPort = clientPort;
 
-            serverSocket = new TcpListener(ipc, 7000);
-            serverSocket.Start();
+            clientSocket = new TcpListener(ipc, 7000);
+            clientSocket.Start();
+        }
+        public void stopClientSocket()
+        {
+            clientSocket.Stop();
         }
 
         //connect to server port to write to it to join the game
@@ -45,17 +50,17 @@ namespace HYtank
 
         public void connectToServer()
         {
-            while (true)
+            try
             {
-                try
-                {
-                    s1.Connect(ips, 6000);
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                }
+                s1.Connect(ips, 6000);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                stopClientSocket();
+                Game1.game.Exit();
+                Program.startScreen.Invoke(Program.startScreen.handler);
+                Program.startScreen.theThread.Abort();
             }
         }
 
@@ -111,7 +116,7 @@ namespace HYtank
             {
                 try
                 {
-                    stream1 = new NetworkStream(serverSocket.AcceptSocket());
+                    stream1 = new NetworkStream(clientSocket.AcceptSocket());
                     responseData = new StreamReader(stream1).ReadToEnd().Trim();
                 }
                 catch (Exception ex)
@@ -150,6 +155,12 @@ namespace HYtank
                 {
                     gameAlreadyStarted = true;
                     //if join successfully play, else exit and return
+                    MessageBox.Show("Sorry, the game has already started!");
+                    stopClientSocket();
+                    Game1.game.Exit();
+                    Program.startScreen.Invoke(Program.startScreen.handler);
+                    Program.startScreen.theThread.Abort();
+                    
                 }
 
 
@@ -163,11 +174,11 @@ namespace HYtank
         public void update()
         {
             String[] info;
-            if (serverSocket.Pending())
+            if (clientSocket.Pending())
             {
                 try
                 {
-                    stream1 = new NetworkStream(serverSocket.AcceptSocket());
+                    stream1 = new NetworkStream(clientSocket.AcceptSocket());
                     responseData = new StreamReader(stream1).ReadToEnd().Trim();
                 }
                 catch (Exception ex)

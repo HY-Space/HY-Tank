@@ -17,10 +17,16 @@ namespace HYtank
         byte[] serverIP, clientIP;
         String[] tempIP;
         int serverPort, clientPort, gridSize;
+        public delegate void Del();
+        public Del handler;
+
+        public Thread theThread;
 
         public StartScreen()
         {
             InitializeComponent();
+            // Instantiate the delegate.
+            handler = makeVisible;
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -106,14 +112,21 @@ namespace HYtank
             }
              */
 
-            Thread theThread = new Thread(StartGame);
-            theThread.Start(); 
+            theThread = new Thread(StartGame);
+            theThread.Start();
+            this.Visible = false;
         }
         public void StartGame()
         {
             Game1 game = new Game1(gridSize,new IPAddress(serverIP), serverPort, new IPAddress(clientIP), clientPort);
             //Game1 game = new Game1(new IPAddress(new byte[] { 127, 0, 0, 1 }), 6000,new IPAddress(new byte[] { 127, 0, 0, 1 }),7000);
             game.Run();
+        }
+
+        public void makeVisible()
+        {
+
+            this.Visible = true;
         }
     }
 }

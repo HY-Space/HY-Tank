@@ -6,12 +6,11 @@ namespace HYtank
 #if WINDOWS || XBOX
     static class Program
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
+        public static StartScreen startScreen = new StartScreen();
+
         static void Main(string[] args)
         {
-            Application.Run(new StartScreen());
+            Application.Run(startScreen);
             //using (Game1 game = new Game1())
             //{
             //    game.Run();

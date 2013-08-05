@@ -187,6 +187,23 @@ namespace HYtank
             // TODO: Unload any non ContentManager content here
         }
 
+
+
+
+        protected override void OnExiting(Object sender, EventArgs args)
+        {
+            base.OnExiting(sender, args);
+            gs.stopClientSocket();
+            Program.startScreen.Invoke(Program.startScreen.handler);
+            Program.startScreen.theThread.Abort();
+        }
+
+
+
+
+
+
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
