@@ -18,7 +18,13 @@ namespace HYtank
         String[] tempIP;
         int serverPort, clientPort, gridSize;
         public delegate void Del();
+        public delegate void Del1();
+        public delegate void Del2();
+        public delegate void Del3();
         public Del handler;
+        public Del1 join;
+        public Del2 start;
+        public Del3 invisible;
 
         public Thread theThread;
 
@@ -27,6 +33,9 @@ namespace HYtank
             InitializeComponent();
             // Instantiate the delegate.
             handler = makeVisible;
+            join = joining;
+            start = starting;
+            invisible = makeInvisible;
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -112,9 +121,10 @@ namespace HYtank
             }
              */
 
+            this.label1.Text = "Connecting To Server...";
+            this.panel1.Visible = true;
             theThread = new Thread(StartGame);
             theThread.Start();
-            this.Visible = false;
         }
         public void StartGame()
         {
@@ -125,8 +135,22 @@ namespace HYtank
 
         public void makeVisible()
         {
-
+            panel1.Visible = false;
             this.Visible = true;
+        }
+
+        public void makeInvisible()
+        {
+            panel1.Visible = false;
+            this.Visible = false;
+        }
+        public void joining()
+        {
+            label1.Text = "Trying To Join To The Game...";
+        }
+        public void starting()
+        {
+            label1.Text = "Waiting For The Game To Start...";
         }
     }
 }

@@ -167,10 +167,12 @@ namespace HYtank
 
 
             gs.connectToServer();
+
+            Program.startScreen.Invoke(Program.startScreen.join);
             gs.joinGame();
-
+            Program.startScreen.Invoke(Program.startScreen.start);
             gs.initialize();
-
+            Program.startScreen.Invoke(Program.startScreen.invisible);
             timer.Start();
 
 
@@ -190,10 +192,12 @@ namespace HYtank
 
         protected override void OnExiting(Object sender, EventArgs args)
         {
-            base.OnExiting(sender, args);
             gs.stopClientSocket();
+            this.Exit();
             Program.startScreen.Invoke(Program.startScreen.handler);
+            this.Dispose();
             Program.startScreen.theThread.Abort();
+            base.OnExiting(sender, args);
         }
 
 
@@ -300,6 +304,24 @@ namespace HYtank
                                 return;
                             }
                         }
+                        if (((players[i].health > 0 && nextCell.X == ourPlayer.coordinates.X && nextCell.Y > ourPlayer.coordinates.Y) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y == ourPlayer.coordinates.Y + 1)) && players[i].direction==0)
+                        {
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = (int)nextCell.Y; j < ourPlayer.coordinates.Y; j++)
+                            {
+                                if (arena[j, ourPlayer.coordinates.X] == 's' || arena[j, ourPlayer.coordinates.X] == 'b' || arena[j, ourPlayer.coordinates.X] == '1' || arena[j, ourPlayer.coordinates.X] == '2' || arena[j, ourPlayer.coordinates.X] == '3')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                gs.command("DOWN#");
+                                return;
+                            }
+                        }
                     }
                 }
                 if (ourPlayer.direction == 1)
@@ -327,6 +349,25 @@ namespace HYtank
                             {
                                 bulletTimer.Start();
                                 allowFireCount = 0;
+                                return;
+                            }
+                        }
+
+                        if (((players[i].health > 0 && nextCell.Y == ourPlayer.coordinates.Y && nextCell.X < ourPlayer.coordinates.X) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X - 1 && players[i].coordinates.Y == ourPlayer.coordinates.Y ))&& players[i].direction == 1)
+                        {
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = ourPlayer.coordinates.X; j <= (int)nextCell.X; j++)
+                            {
+                                if (arena[ourPlayer.coordinates.Y, j] == 's' || arena[ourPlayer.coordinates.Y, j] == 'b' || arena[ourPlayer.coordinates.Y, j] == '1' || arena[ourPlayer.coordinates.Y, j] == '2' || arena[ourPlayer.coordinates.Y, j] == '3')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                gs.command("LEFT#");
                                 return;
                             }
                         }
@@ -360,6 +401,25 @@ namespace HYtank
                                 return;
                             }
                         }
+
+                        if (((players[i].health > 0 && nextCell.X == ourPlayer.coordinates.X && nextCell.Y < ourPlayer.coordinates.Y) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X && players[i].coordinates.Y == ourPlayer.coordinates.Y - 1))&& players[i].direction == 2)
+                        {
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = ourPlayer.coordinates.Y; j <= (int)nextCell.Y; j++)
+                            {
+                                if (arena[j, ourPlayer.coordinates.X] == 's' || arena[j, ourPlayer.coordinates.X] == 'b' || arena[j, ourPlayer.coordinates.X] == '1' || arena[j, ourPlayer.coordinates.X] == '2' || arena[j, ourPlayer.coordinates.X] == '3')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                gs.command("UP#");
+                                return;
+                            }
+                        }
                     }
                 }
                 if (ourPlayer.direction == 3)
@@ -387,6 +447,25 @@ namespace HYtank
                             {
                                 bulletTimer.Start();
                                 allowFireCount = 0;
+                                return;
+                            }
+                        }
+
+                        if (((players[i].health > 0 && nextCell.Y == ourPlayer.coordinates.Y && nextCell.X > ourPlayer.coordinates.X) || (players[i].health > 0 && players[i].coordinates.X == ourPlayer.coordinates.X + 1 && players[i].coordinates.Y == ourPlayer.coordinates.Y))&& players[i].direction == 3)
+                        {
+                            //here, it is checked whether any stone lies in between
+                            stones = false;
+                            for (int j = (int)nextCell.X; j < ourPlayer.coordinates.X; j++)
+                            {
+                                if (arena[ourPlayer.coordinates.Y, j] == 's' || arena[ourPlayer.coordinates.Y, j] == 'b' || arena[ourPlayer.coordinates.Y, j] == '1' || arena[ourPlayer.coordinates.Y, j] == '2' || arena[ourPlayer.coordinates.Y, j] == '3')
+                                {
+                                    stones = true;
+                                    break;
+                                }
+                            }
+                            if (!stones)
+                            {
+                                gs.command("RIGHT#");
                                 return;
                             }
                         }
@@ -434,7 +513,42 @@ namespace HYtank
             HashSet<CoinsInfo> reachableCoins = new HashSet<CoinsInfo>();//this will have reachable coins
 
             //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
-
+            if (ourPlayer.health<70)//go for life packs if health is low
+            {
+                foreach (LifepackInfo lifePack in lifeList)
+                {
+                    if ((ourPlayer.coordinates.X != lifePack.x || ourPlayer.coordinates.Y != lifePack.y) && (nextLife == null || ourPlayer.distanceMatrix[lifePack.y, lifePack.x].min < ourPlayer.distanceMatrix[nextLife.y, nextLife.x].min) && ourPlayer.distanceMatrix[lifePack.y, lifePack.x].min * timePerStep < lifePack.leaveat - gt.TotalGameTime.TotalMilliseconds)
+                    {
+                        nextLife = lifePack;
+                    }
+                }
+                if (nextLife != null)
+                {
+                    switch (ourPlayer.distanceMatrix[nextLife.y, nextLife.x].moveTo)
+                    {
+                        case 0:
+                            {
+                                nextCommand = "UP#";
+                                break;
+                            }
+                        case 1:
+                            {
+                                nextCommand = "RIGHT#";
+                                break;
+                            }
+                        case 2:
+                            {
+                                nextCommand = "DOWN#";
+                                break;
+                            }
+                        case 3:
+                            {
+                                nextCommand = "LEFT#";
+                                break;
+                            }
+                    }
+                }
+            }
             //calculate distances for each tank
             for (int i = 0; i < noPlayers; i++ )
             {
@@ -475,14 +589,17 @@ namespace HYtank
 
             //find the closest coin pile from the remainings
             nextTarget = null;
-            foreach (CoinsInfo coin in reachableCoins)
+            if(nextLife==null)
             {
-                if (nextTarget == null || ourPlayer.distanceMatrix[coin.y, coin.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min)
+
+                foreach (CoinsInfo coin in reachableCoins)
                 {
-                    nextTarget = coin;
+                    if (nextTarget == null || ourPlayer.distanceMatrix[coin.y, coin.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min)
+                    {
+                        nextTarget = coin;
+                    }
                 }
             }
-
             
             if (nextTarget != null)// used in case no coins are in the arena
             {
@@ -511,7 +628,7 @@ namespace HYtank
                         }
                 }
             }
-            if (nextTarget == null)//go for life packs if no coins are there
+            if (nextTarget == null && nextLife == null)//go for life packs if no coins are there
             {
                 foreach (LifepackInfo lifePack in lifeList)
                 {
@@ -550,7 +667,7 @@ namespace HYtank
 
             //if no reachable coin piles, keep moving towards the closest one
            
-            if (nextTarget == null)//this segment is used to move the tank without going nowhere
+            if (nextTarget == null && nextLife==null)//this segment is used to move the tank without going nowhere
             {
                 foreach (CoinsInfo coin in coinsList)
                 {
@@ -588,6 +705,58 @@ namespace HYtank
                     }
                 }
             }
+
+            if ("".Equals(nextCommand))
+            {
+                int x, y;
+                if (ourPlayer.coordinates.X < columnsGrid / 2 && ourPlayer.coordinates.Y < columnsGrid / 2)
+                {
+                    x = columnsGrid - 1;
+                    y = columnsGrid - 1;
+                }
+                else if (ourPlayer.coordinates.X < columnsGrid / 2 && ourPlayer.coordinates.Y > columnsGrid / 2)
+                {
+                    x = columnsGrid - 1;
+                    y = 0;
+                }
+                else if (ourPlayer.coordinates.X > columnsGrid / 2 && ourPlayer.coordinates.Y < columnsGrid / 2)
+                {
+                    x = 0;
+                    y = columnsGrid - 1;
+                }
+                else
+                {
+                    x = 0;
+                    y = 0;
+                }
+
+                switch (ourPlayer.distanceMatrix[y, x].moveTo)
+                {
+                    case 0:
+                        {
+                            nextCommand = "UP#";
+                            break;
+                        }
+                    case 1:
+                        {
+                            nextCommand = "RIGHT#";
+                            break;
+                        }
+                    case 2:
+                        {
+                            nextCommand = "DOWN#";
+                            break;
+                        }
+                    case 3:
+                        {
+                            nextCommand = "LEFT#";
+                            break;
+                        }
+                }
+
+            }
+
+
         }
 
         /// <summary>
