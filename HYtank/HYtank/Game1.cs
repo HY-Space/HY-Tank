@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using System.Timers;
 using System.Diagnostics;
+using System.Collections;
 
 namespace HYtank
 {
@@ -92,13 +93,7 @@ namespace HYtank
                 }
             }
 
-            for (int i = 0; i < columnsGrid; i++)
-            {
-                for (int j = 0; j < columnsGrid; j++)
-                {
-                    myDistances[i, j]=new Cell();
-                }
-            }
+            
 
             gs.setGrid(arena, p0, p1, p2, p3, p4, gridSize, columnsGrid);
             
@@ -345,22 +340,77 @@ namespace HYtank
 
         public void setNextMove()
         {
-            //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
-            findDistances(ourPlayer.coordinates.X, ourPlayer.coordinates.Y, ourPlayer.direction);
-            //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
+           
+            
+            
             CoinsInfo nextTarget = null;
             LifepackInfo nextLife = null;
+
+            HashSet<CoinsInfo> reachableCoins = new HashSet<CoinsInfo>();//this will have reachable coins
+
+            //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
+            foreach (PlayerInfo player in players)
+            {
+                findDistances(player.coordinates.X, player.coordinates.Y, player.direction, player.distanceMatrix);
+            }
+            //Console.WriteLine(gt.TotalGameTime.TotalMilliseconds);// test
+
+
+
+            //foreach (CoinsInfo coin in coinsList)
+            //{
+            //    if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || ourPlayer.distanceMatrix[coin.y, coin.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min) && ourPlayer.distanceMatrix[coin.y, coin.x].min * timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
+            //    {
+            //        nextTarget = coin;
+            //    }
+            //}
+
             foreach (CoinsInfo coin in coinsList)
             {
-                if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || myDistances[coin.y, coin.x].min < myDistances[nextTarget.y, nextTarget.x].min) && myDistances[coin.y, coin.x].min *timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
+                if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && ourPlayer.distanceMatrix[coin.y, coin.x].min * timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
+                {
+                    reachableCoins.Add(coin);
+                }
+            }
+
+            //this finds the closest coin pile to each oponent and removes from our tanks reachable list
+            for (int i = 0; i < 5; i++)
+            {
+                nextTarget = null;
+                if (players[i] != ourPlayer)
+                {
+                    foreach (CoinsInfo coin in coinsList)
+                    {
+                        if ((players[i].coordinates.X != coin.x || players[i].coordinates.Y != coin.y) && (nextTarget == null || players[i].distanceMatrix[coin.y, coin.x].min < players[i].distanceMatrix[nextTarget.y, nextTarget.x].min))
+                        {
+                            nextTarget = coin;
+                        }
+                    }
+                    //this will remove coins that are reachable by oponents before us
+                    //but this is not perfect as the time to a step is not the same
+                    if (nextTarget != null && players[i].distanceMatrix[nextTarget.y, nextTarget.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min && players[i].health>0)
+                    {
+                        reachableCoins.Remove(nextTarget);
+                    }
+                }
+            }
+
+
+            //find the closest coin pile from the remainings
+            nextTarget = null;
+            foreach (CoinsInfo coin in reachableCoins)
+            {
+                if (nextTarget == null || ourPlayer.distanceMatrix[coin.y, coin.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min)
                 {
                     nextTarget = coin;
                 }
             }
+
+            
             if (nextTarget != null)// used in case no coins are in the arena
             {
                 //Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
-                switch (myDistances[nextTarget.y, nextTarget.x].moveTo)
+                switch (ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].moveTo)
                 {
                     case 0:
                         {
@@ -388,14 +438,14 @@ namespace HYtank
             {
                 foreach (LifepackInfo lifePack in lifeList)
                 {
-                    if ((ourPlayer.coordinates.X != lifePack.x || ourPlayer.coordinates.Y != lifePack.y) && (nextLife == null || myDistances[lifePack.y, lifePack.x].min < myDistances[nextLife.y, nextLife.x].min) && myDistances[lifePack.y, lifePack.x].min * timePerStep < lifePack.leaveat - gt.TotalGameTime.TotalMilliseconds)
+                    if ((ourPlayer.coordinates.X != lifePack.x || ourPlayer.coordinates.Y != lifePack.y) && (nextLife == null || ourPlayer.distanceMatrix[lifePack.y, lifePack.x].min < ourPlayer.distanceMatrix[nextLife.y, nextLife.x].min) && ourPlayer.distanceMatrix[lifePack.y, lifePack.x].min * timePerStep < lifePack.leaveat - gt.TotalGameTime.TotalMilliseconds)
                     {
                         nextLife = lifePack;
                     }
                 }
                 if (nextLife != null)
                 {
-                    switch (myDistances[nextLife.y, nextLife.x].moveTo)
+                    switch (ourPlayer.distanceMatrix[nextLife.y, nextLife.x].moveTo)
                     {
                         case 0:
                             {
@@ -421,11 +471,13 @@ namespace HYtank
                 }
             }
 
+            //if no reachable coin piles, keep moving towards the closest one
+           
             if (nextTarget == null)//this segment is used to move the tank without going nowhere
             {
                 foreach (CoinsInfo coin in coinsList)
                 {
-                    if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || myDistances[coin.y, coin.x].min < myDistances[nextTarget.y, nextTarget.x].min) && myDistances[coin.y, coin.x].min * timePerStep < coin.leaveat - gt.TotalGameTime.TotalMilliseconds)
+                    if ((ourPlayer.coordinates.X != coin.x || ourPlayer.coordinates.Y != coin.y) && (nextTarget == null || ourPlayer.distanceMatrix[coin.y, coin.x].min < ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].min))
                     {
                         nextTarget = coin;
                     }
@@ -433,7 +485,7 @@ namespace HYtank
                     if (nextTarget != null)// used in case no coins are in the arena
                     {
                         //Console.WriteLine(nextTarget.x + "," + nextTarget.y);//test
-                        switch (myDistances[nextTarget.y, nextTarget.x].moveTo)
+                        switch (ourPlayer.distanceMatrix[nextTarget.y, nextTarget.x].moveTo)
                         {
                             case 0:
                                 {
@@ -720,22 +772,22 @@ namespace HYtank
             return new Vector2(Game1.gridOriginx + (x + .5f) * gridSize / columnsGrid - celltext.MeasureString(text).X / 2, Game1.gridOriginy + (y + .5f) * gridSize / columnsGrid - celltext.MeasureString(text).Y / 2);
         }
 
-        private void findDistances(int sourceX, int sourceY, int sourceOrientation)
+        private void findDistances(int sourceX, int sourceY, int sourceOrientation, Cell[,] resultMatrix)
         {
             for (int i = 0; i < columnsGrid; i++)
             {
                 for (int j = 0; j < columnsGrid; j++)
                 {
-                    myDistances[i, j].distances[0] = myDistances[i, j].distances[1] = myDistances[i, j].distances[2] = myDistances[i, j].distances[3] = myDistances[i, j].min = int.MaxValue;
+                    resultMatrix[i, j].distances[0] = resultMatrix[i, j].distances[1] = resultMatrix[i, j].distances[2] = resultMatrix[i, j].distances[3] = resultMatrix[i, j].min = int.MaxValue;
                 }
             }
             Queue<int[]> q = new Queue<int[]>();
             q.Enqueue(new int[] { sourceX, sourceY });
 
-            myDistances[sourceY, sourceX].setDistance(0, sourceOrientation == 0 ? 0 : 1, -1);
-            myDistances[sourceY, sourceX].setDistance(1, sourceOrientation == 1 ? 0 : 1, -1);
-            myDistances[sourceY, sourceX].setDistance(2, sourceOrientation == 2 ? 0 : 1, -1);
-            myDistances[sourceY, sourceX].setDistance(3, sourceOrientation == 3 ? 0 : 1, -1);
+            resultMatrix[sourceY, sourceX].setDistance(0, sourceOrientation == 0 ? 0 : 1, -1);
+            resultMatrix[sourceY, sourceX].setDistance(1, sourceOrientation == 1 ? 0 : 1, -1);
+            resultMatrix[sourceY, sourceX].setDistance(2, sourceOrientation == 2 ? 0 : 1, -1);
+            resultMatrix[sourceY, sourceX].setDistance(3, sourceOrientation == 3 ? 0 : 1, -1);
 
             int[] tmp;
             int parentDistance;
@@ -744,115 +796,115 @@ namespace HYtank
             while (q.Count > 0)
             {
                 tmp = q.Dequeue();
-                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(0);
+                parentDistance = resultMatrix[tmp[1], tmp[0]].getDistance(0);
                 if (tmp[1] > 0 && !barriers.Contains(arena[tmp[1] - 1, tmp[0]]))
                 {
-                    if (myDistances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 2)
+                    if (resultMatrix[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 2)
                     {
-                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
+                        if (resultMatrix[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 0;
                         }
                         else
                         {
-                            tmpMov = myDistances[tmp[1], tmp[0]].move[0];
+                            tmpMov = resultMatrix[tmp[1], tmp[0]].move[0];
                         }
 
-                        myDistances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, tmpMov);
-                        myDistances[tmp[1] - 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1] - 1, tmp[0]].setDistance(2, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1] - 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, tmpMov);
+                        resultMatrix[tmp[1] - 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1] - 1, tmp[0]].setDistance(2, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1] - 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
                         
                         q.Enqueue(new int[] { tmp[0], tmp[1] - 1 });
                     }
-                    else if (myDistances[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 1)
+                    else if (resultMatrix[tmp[1] - 1, tmp[0]].getDistance(0) > parentDistance + 1)
                     {
-                        myDistances[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[0]);
+                        resultMatrix[tmp[1] - 1, tmp[0]].setDistance(0, parentDistance + 1, resultMatrix[tmp[1], tmp[0]].move[0]);
                         q.Enqueue(new int[] { tmp[0], tmp[1] - 1 });
                     }
                 }
 
-                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(1);
+                parentDistance = resultMatrix[tmp[1], tmp[0]].getDistance(1);
                 if (tmp[0] < columnsGrid - 1 && !barriers.Contains(arena[tmp[1], tmp[0] + 1]))
                 {
-                    if (myDistances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 2)
+                    if (resultMatrix[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 2)
                     {
-                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
+                        if (resultMatrix[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 1;
                         }
                         else
                         {
-                            tmpMov = myDistances[tmp[1], tmp[0]].move[1];
+                            tmpMov = resultMatrix[tmp[1], tmp[0]].move[1];
                         }
 
-                        myDistances[tmp[1], tmp[0] + 1].setDistance(0, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, tmpMov);
-                        myDistances[tmp[1], tmp[0] + 1].setDistance(2, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1], tmp[0] + 1].setDistance(3, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] + 1].setDistance(0, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] + 1].setDistance(2, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] + 1].setDistance(3, parentDistance + 2, tmpMov);
 
                         q.Enqueue(new int[] { tmp[0] + 1, tmp[1] });
                     }
-                    else if (myDistances[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 1)
+                    else if (resultMatrix[tmp[1], tmp[0] + 1].getDistance(1) > parentDistance + 1)
                     {
-                        myDistances[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[1]);
+                        resultMatrix[tmp[1], tmp[0] + 1].setDistance(1, parentDistance + 1, resultMatrix[tmp[1], tmp[0]].move[1]);
                         q.Enqueue(new int[] { tmp[0] + 1, tmp[1] });
                     }
                 }
                 
-                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(2);
+                parentDistance = resultMatrix[tmp[1], tmp[0]].getDistance(2);
                 if (tmp[1] < columnsGrid - 1 && !barriers.Contains(arena[tmp[1] + 1, tmp[0]]))
                 {
-                    if (myDistances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 2)
+                    if (resultMatrix[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 2)
                     {
-                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
+                        if (resultMatrix[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 2;
                         }
                         else
                         {
-                            tmpMov = myDistances[tmp[1], tmp[0]].move[2];
+                            tmpMov = resultMatrix[tmp[1], tmp[0]].move[2];
                         }
 
-                        myDistances[tmp[1] + 1, tmp[0]].setDistance(0, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1] + 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, tmpMov);
-                        myDistances[tmp[1] + 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1] + 1, tmp[0]].setDistance(0, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1] + 1, tmp[0]].setDistance(1, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, tmpMov);
+                        resultMatrix[tmp[1] + 1, tmp[0]].setDistance(3, parentDistance + 2, tmpMov);
 
                         q.Enqueue(new int[] { tmp[0], tmp[1] + 1 });
                     }
-                    else if (myDistances[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 1)
+                    else if (resultMatrix[tmp[1] + 1, tmp[0]].getDistance(2) > parentDistance + 1)
                     {
-                        myDistances[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[2]);
+                        resultMatrix[tmp[1] + 1, tmp[0]].setDistance(2, parentDistance + 1, resultMatrix[tmp[1], tmp[0]].move[2]);
                         q.Enqueue(new int[] { tmp[0], tmp[1] + 1 });
                     }
                 }
                 
 
-                parentDistance = myDistances[tmp[1], tmp[0]].getDistance(3);
+                parentDistance = resultMatrix[tmp[1], tmp[0]].getDistance(3);
                 if (tmp[0] > 0 && !barriers.Contains(arena[tmp[1], tmp[0] - 1]))
                 {
-                    if (myDistances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 2)
+                    if (resultMatrix[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 2)
                     {
-                        if (myDistances[tmp[1], tmp[0]].moveTo == -1)
+                        if (resultMatrix[tmp[1], tmp[0]].moveTo == -1)
                         {
                             tmpMov = 3;
                         }
                         else
                         {
-                            tmpMov = myDistances[tmp[1], tmp[0]].move[3];
+                            tmpMov = resultMatrix[tmp[1], tmp[0]].move[3];
                         }
 
-                        myDistances[tmp[1], tmp[0] - 1].setDistance(0, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1], tmp[0] - 1].setDistance(1, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1], tmp[0] - 1].setDistance(2, parentDistance + 2, tmpMov);
-                        myDistances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] - 1].setDistance(0, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] - 1].setDistance(1, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] - 1].setDistance(2, parentDistance + 2, tmpMov);
+                        resultMatrix[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, tmpMov);
 
                         q.Enqueue(new int[] { tmp[0] - 1, tmp[1] });
                     }
-                    else if (myDistances[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 1)
+                    else if (resultMatrix[tmp[1], tmp[0] - 1].getDistance(3) > parentDistance + 1)
                     {
-                        myDistances[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, myDistances[tmp[1], tmp[0]].move[3]);
+                        resultMatrix[tmp[1], tmp[0] - 1].setDistance(3, parentDistance + 1, resultMatrix[tmp[1], tmp[0]].move[3]);
                         q.Enqueue(new int[] { tmp[0] - 1, tmp[1] });
                     }
                 }
@@ -862,7 +914,7 @@ namespace HYtank
 
     }
 
-    class Cell
+    public class Cell
     {
         public int[] distances = { int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue };
         public int[] move= new int[4];
@@ -895,9 +947,21 @@ namespace HYtank
         public int direction, health = 0, coins = 0, points = 0;
         public Boolean shot = false;
         public Boolean participant = false;
+        public Cell[,] distanceMatrix = new Cell[Game1.columnsGrid, Game1.columnsGrid];
+
+
         public PlayerInfo(int x, int y)
         {
             position = new Vector2(x, y);
+
+            for (int i = 0; i < Game1.columnsGrid; i++)
+            {
+                for (int j = 0; j < Game1.columnsGrid; j++)
+                {
+                    distanceMatrix[i, j] = new Cell();
+                }
+            }
+
         }
     }
     public class CoinsInfo
@@ -906,6 +970,7 @@ namespace HYtank
         public int value;
         public double leaveat;
         public int x, y, lifetime;
+
         public CoinsInfo(float xpos, float ypos,int val, double lt,int x,int y,int lifetime)
         {
             value= val;
